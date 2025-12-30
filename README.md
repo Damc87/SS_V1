@@ -1,37 +1,43 @@
 # Gradnja – Stroški
 
-Offline-first namizna aplikacija za spremljanje stroškov gradnje. Grajena z Electron + Vite + React + TypeScript + Tailwind + framer-motion + Recharts ter lokalno SQLite WASM bazo (sql.js) – brez Pythona / node-gyp.
+Offline-first namizna aplikacija za spremljanje stroškov gradnje. Grajena z Electron + Vite + React + TypeScript + Tailwind + framer-motion + Recharts in lokalnim JSON shranjevanjem (brez Pythona in brez native modulov/node-gyp).
 
-## Hitri začetek (Windows-first)
+## Windows koraki (developerji)
 
-1. Namesti odvisnosti (Python ni potreben)
+1. Kloniraj projekt  
+   ```bash
+   git clone <repo-url>
+   cd SS_V1
+   ```
+2. Namesti odvisnosti  
    ```bash
    npm install
    ```
-2. Zaženi razvojni način (odpre Electron okno)
+3. Zaženi razvoj (Vite + Electron, odpre okno)  
    ```bash
    npm run dev
    ```
-
-## Build (Windows .exe)
-
-```bash
-npm run build
-```
+4. Pripravi produkcijski build rendererja + main procesa  
+   ```bash
+   npm run build
+   ```
+5. Ustvari Windows namestitveni EXE prek electron-builder  
+   ```bash
+   npm run dist
+   ```
 
 ## Struktura
-- `/electron`: glavni proces, baza in IPC handlerji
-- `/src`: renderer (React)
+- `/electron`: glavni proces, JSON shramba in IPC handlerji
+- `/src`: renderer (React + Tailwind + shadcn-style UI)
 - `/src/features`: domenske funkcionalnosti (dashboard, costs, phases, contractors, documents, settings, style-guide)
-- `/src/components`: skupne UI komponente
-- `/src/lib`: helperji (IPC wrapperji, utils)
+- `/src/components`: skupne UI komponente in error boundary
 - `/src/store`: globalno stanje (zustand)
 - `/src/styles`: globalni stili
 
-## Podatki & poti
-- Baza: `%APPDATA%/GradnjaStroski/data/app.sqlite`
-- Uploadi: `%APPDATA%/GradnjaStroski/data/uploads`
-- Uporabljene poti vedno prek `path.join` in `app.getPath('userData')`
+## Podatki & poti (Windows)
+- Vsi podatki: `%APPDATA%/GradnjaStroski/data.json`
+- Priponke: `%APPDATA%/GradnjaStroski/uploads/`
+- Poti se pridobijo prek `app.getPath("userData")` in niso odvisne od Pythona ali native modulov.
 
 ### Ponastavi podatke
-Z zaprtim programom izbriši datoteko `%APPDATA%/GradnjaStroski/data/app.sqlite` (po potrebi tudi mapo uploads). Ob ponovnem zagonu se baza znova inicializira z osnovnimi fazami.
+Z zaprtim programom izbriši datoteko `%APPDATA%/GradnjaStroski/data.json` (po potrebi tudi mapo `uploads`). Ob ponovnem zagonu se shramba znova inicializira z osnovnimi fazami.

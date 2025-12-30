@@ -19,8 +19,9 @@ async function createWindow() {
     },
   });
 
-  if (isDev) {
-    await win.loadURL('http://localhost:5173');
+  const devServer = process.env.VITE_DEV_SERVER_URL || (isDev ? 'http://localhost:5173' : null);
+  if (devServer) {
+    await win.loadURL(devServer);
     win.webContents.openDevTools({ mode: 'detach' });
   } else {
     const indexHtml = path.join(__dirname, '../dist/index.html');

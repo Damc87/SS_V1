@@ -7,19 +7,18 @@ export const getDataRoot = () => {
   return path.join(base, 'GradnjaStroski');
 };
 
-export const getDatabasePath = () => {
-  return path.join(getDataRoot(), 'data', 'app.sqlite');
+export const getDataFilePath = () => {
+  return path.join(getDataRoot(), 'data.json');
 };
 
 export const getUploadsPath = () => {
-  return path.join(getDataRoot(), 'data', 'uploads');
+  return path.join(getDataRoot(), 'uploads');
 };
 
 export const ensureDataDirectories = () => {
   const root = getDataRoot();
-  const dataDir = path.join(root, 'data');
   const uploadsDir = getUploadsPath();
-  [root, dataDir, uploadsDir].forEach((dir) => {
+  [root, uploadsDir].forEach((dir) => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }

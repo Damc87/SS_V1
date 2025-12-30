@@ -1,574 +1,354 @@
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import path from 'path';
-import initSqlJs from 'sql.js';
-import type { Database as SqlDatabase, SqlJsStatic } from 'sql.js';
 import { v4 as uuidv4 } from 'uuid';
-import { ensureDataDirectories, getDatabasePath, getUploadsPath } from '../utils/paths';
+import { ensureDataDirectories, getDataFilePath, getUploadsPath, getDataRoot } from '../utils/paths';
+import type { Contractor, Cost, Document, Phase, Project, Subphase } from '../types/models';
 
-export type Project = {
-  id: string;
-  name: string;
-  description?: string;
-  net_m2?: number;
-  gross_m2?: number;
-  volume_m3?: number;
-  created_at: string;
+type DataState = {
+  projects: Project[];
+  phases: Phase[];
+  subphases: Subphase[];
+  contractors: Contractor[];
+  costs: Cost[];
+  documents: Document[];
+  meta: {
+    activeProjectId: string | null;
+  };
 };
 
-export type Phase = { id: string; name: string; order_no: number };
-export type Subphase = { id: string; phase_id: string; name: string; order_no: number };
+const defaultPhases = [
+  { name: 'Priprava', subs: ['Načrtovanje', 'Dovoljenja'] },
+  { name: 'Zemeljska dela', subs: ['Izkop', 'Nasipavanje'] },
+  { name: 'Temelji', subs: ['Temeljni pasovi', 'Hidroizolacija'] },
+  { name: 'Plošča', subs: ['Opaž', 'Betoniranje'] },
+  { name: 'Zidava', subs: ['Nosilne stene', 'Predelne stene'] },
+  { name: 'Streha', subs: ['Konstrukcija', 'Kritina'] },
+  { name: 'Fasada', subs: ['Toplotna izolacija', 'Zaključni sloj'] },
+  { name: 'Okna/Vrata', subs: ['Okna', 'Vrata'] },
+  { name: 'Instalacije', subs: ['Elektrika', 'Voda', 'Ogrevanje'] },
+  { name: 'Estrihi', subs: ['Podlaga', 'Estrih'] },
+  { name: 'Zaključna dela', subs: ['Pleskanje', 'Talne obloge'] },
+  { name: 'Zunanja ureditev', subs: ['Dovoz', 'Ograja'] },
+];
 
-export type Contractor = {
-  id: string;
-  name: string;
-  tax_id?: string;
-  phone?: string;
-  email?: string;
-  address?: string;
-  created_at: string;
-};
+class JsonDatabase {
+  private state: DataState | null = null;
+  private mutex = Promise.resolve();
 
-export type Cost = {
-  id: string;
-  project_id: string;
-  date: string;
-  phase_id?: string;
-  subphase_id?: string;
-  contractor_id?: string;
-  title: string;
-  category: string;
-  amount_net: number;
-  vat_rate: number;
-  amount_gross: number;
-  status: string;
-  invoice_no?: string;
-  invoice_date?: string;
-  due_date?: string;
-  notes?: string;
-  created_at: string;
-};
+  private async init() {
+    if (this.state) return;
+    await ensureDataDirectories();
+    const filePath = getDataFilePath();
+    if (fs.existsSync(filePath)) {
+      const raw = await fsPromises.readFile(filePath, 'utf-8');
+      this.state = JSON.parse(raw) as DataState;
+    } else {
+      this.state = this.createEmptyState();
+      await this.persist();
+    }
+    await this.seedPhases();
+  }
 
-export type Document = {
-  id: string;
-  project_id: string;
-  cost_id?: string;
-  original_name: string;
-  stored_name: string;
-  stored_path: string;
-  mime: string;
-  size: number;
-  created_at: string;
-};
+  private createEmptyState(): DataState {
+    return {
+      projects: [],
+      phases: [],
+      subphases: [],
+      contractors: [],
+      costs: [],
+      documents: [],
+      meta: { activeProjectId: null },
+    };
+  }
 
-class Mutex {
-  private queue = Promise.resolve();
+  private async persist() {
+    await ensureDataDirectories();
+    const filePath = getDataFilePath();
+    await fsPromises.writeFile(filePath, JSON.stringify(this.state, null, 2), 'utf-8');
+  }
 
-  async runExclusive<T>(fn: () => Promise<T>): Promise<T> {
-    let release!: () => void;
-    const previous = this.queue;
-    this.queue = new Promise<void>((resolve) => {
-      release = resolve;
+  private async withLock<T>(fn: () => Promise<T>): Promise<T> {
+    const release = this.mutex;
+    let resolveRelease: () => void;
+    this.mutex = new Promise<void>((resolve) => {
+      resolveRelease = resolve;
     });
-    await previous;
+    await release;
     try {
       return await fn();
     } finally {
-      release();
+      resolveRelease!();
     }
-  }
-}
-
-class SqlJsDatabase {
-  private db: SqlDatabase | null = null;
-  private sqlJs: SqlJsStatic | null = null;
-  private initialized = false;
-  private initializationPromise: Promise<void> | null = null;
-  private mutex = new Mutex();
-  private saveTimer: NodeJS.Timeout | null = null;
-  private pendingSave: Promise<void> | null = null;
-
-  private async init() {
-    if (this.initialized) return;
-    if (!this.initializationPromise) {
-      this.initializationPromise = this.mutex.runExclusive(async () => {
-        if (this.initialized) return;
-        await ensureDataDirectories();
-        await this.loadDatabase();
-        this.applySchema();
-        await this.seedPhases();
-        this.initialized = true;
-      });
-    }
-    await this.initializationPromise;
-  }
-
-  private async loadDatabase() {
-    const wasmBinary = await fsPromises.readFile(require.resolve('sql.js/dist/sql-wasm.wasm'));
-    this.sqlJs = await initSqlJs({ wasmBinary });
-    const dbPath = getDatabasePath();
-    let buffer: Uint8Array | undefined;
-    try {
-      const file = await fsPromises.readFile(dbPath);
-      buffer = new Uint8Array(file);
-    } catch (error) {
-      const err = error as NodeJS.ErrnoException;
-      if (err.code !== 'ENOENT') {
-        throw err;
-      }
-    }
-    if (!this.sqlJs) {
-      throw new Error('Failed to initialize sql.js');
-    }
-    this.db = buffer ? new this.sqlJs.Database(buffer) : new this.sqlJs.Database();
-  }
-
-  private applySchema() {
-    if (!this.db) return;
-    const statements = [
-      `CREATE TABLE IF NOT EXISTS projects (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT,
-        net_m2 REAL,
-        gross_m2 REAL,
-        volume_m3 REAL,
-        created_at TEXT NOT NULL
-      );`,
-      `CREATE TABLE IF NOT EXISTS phases (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        order_no INTEGER NOT NULL
-      );`,
-      `CREATE TABLE IF NOT EXISTS subphases (
-        id TEXT PRIMARY KEY,
-        phase_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        order_no INTEGER NOT NULL,
-        FOREIGN KEY(phase_id) REFERENCES phases(id) ON DELETE CASCADE
-      );`,
-      `CREATE TABLE IF NOT EXISTS contractors (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        tax_id TEXT,
-        phone TEXT,
-        email TEXT,
-        address TEXT,
-        created_at TEXT NOT NULL
-      );`,
-      `CREATE TABLE IF NOT EXISTS costs (
-        id TEXT PRIMARY KEY,
-        project_id TEXT NOT NULL,
-        date TEXT NOT NULL,
-        phase_id TEXT,
-        subphase_id TEXT,
-        contractor_id TEXT,
-        title TEXT NOT NULL,
-        category TEXT NOT NULL,
-        amount_net REAL NOT NULL,
-        vat_rate REAL NOT NULL,
-        amount_gross REAL NOT NULL,
-        status TEXT NOT NULL,
-        invoice_no TEXT,
-        invoice_date TEXT,
-        due_date TEXT,
-        notes TEXT,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
-      );`,
-      `CREATE TABLE IF NOT EXISTS documents (
-        id TEXT PRIMARY KEY,
-        project_id TEXT NOT NULL,
-        cost_id TEXT,
-        original_name TEXT NOT NULL,
-        stored_name TEXT NOT NULL,
-        stored_path TEXT NOT NULL,
-        mime TEXT NOT NULL,
-        size INTEGER NOT NULL,
-        created_at TEXT NOT NULL,
-        FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
-      );`,
-      `CREATE TABLE IF NOT EXISTS meta (
-        key TEXT PRIMARY KEY,
-        value TEXT
-      );`,
-    ];
-    statements.forEach((sql) => this.db?.run(sql));
   }
 
   private async seedPhases() {
-    if (!this.db) return;
-    const count = this.getOne<{ total: number }>('SELECT COUNT(*) as total FROM phases');
-    if (count?.total && count.total > 0) return;
-    const phases = [
-      { name: 'Priprava', subs: ['Načrtovanje', 'Dovoljenja'] },
-      { name: 'Zemeljska dela', subs: ['Izkop', 'Nasipavanje'] },
-      { name: 'Temelji', subs: ['Temeljni pasovi', 'Hidroizolacija'] },
-      { name: 'Plošča', subs: ['Opaž', 'Betoniranje'] },
-      { name: 'Zidava', subs: ['Nosilne stene', 'Predelne stene'] },
-      { name: 'Streha', subs: ['Konstrukcija', 'Kritina'] },
-      { name: 'Fasada', subs: ['Toplotna izolacija', 'Zaključni sloj'] },
-      { name: 'Okna/Vrata', subs: ['Okna', 'Vrata'] },
-      { name: 'Instalacije', subs: ['Elektrika', 'Voda', 'Ogrevanje'] },
-      { name: 'Estrihi', subs: ['Podlaga', 'Estrih'] },
-      { name: 'Zaključna dela', subs: ['Pleskanje', 'Talne obloge'] },
-      { name: 'Zunanja ureditev', subs: ['Dovoz', 'Ograja'] },
-    ];
-
-    phases.forEach((phase, index) => {
+    if (!this.state) return;
+    if (this.state.phases.length) return;
+    const phases: Phase[] = [];
+    const subphases: Subphase[] = [];
+    defaultPhases.forEach((phase, idx) => {
       const phaseId = uuidv4();
-      this.run(
-        'INSERT INTO phases (id, name, order_no) VALUES (:id, :name, :order_no)',
-        { id: phaseId, name: phase.name, order_no: index + 1 }
-      );
-      phase.subs.forEach((sub, idx) =>
-        this.run(
-          'INSERT INTO subphases (id, phase_id, name, order_no) VALUES (:id, :phase_id, :name, :order_no)',
-          { id: uuidv4(), phase_id: phaseId, name: sub, order_no: idx + 1 }
-        )
-      );
-    });
-    this.schedulePersist();
-  }
-
-  private schedulePersist() {
-    if (this.saveTimer) {
-      clearTimeout(this.saveTimer);
-    }
-    this.saveTimer = setTimeout(() => {
-      this.saveTimer = null;
-      this.pendingSave = this.persistToDisk().finally(() => {
-        this.pendingSave = null;
+      phases.push({ id: phaseId, name: phase.name, order_no: idx + 1 });
+      phase.subs.forEach((sub, subIdx) => {
+        subphases.push({ id: uuidv4(), phase_id: phaseId, name: sub, order_no: subIdx + 1 });
       });
-    }, 300);
-  }
-
-  private async persistToDisk() {
-    if (!this.db) return;
-    const dbPath = getDatabasePath();
-    const data = this.db.export();
-    await fsPromises.mkdir(path.dirname(dbPath), { recursive: true });
-    await fsPromises.writeFile(dbPath, Buffer.from(data));
-  }
-
-  private async flushPendingSave() {
-    if (this.saveTimer) {
-      clearTimeout(this.saveTimer);
-      this.saveTimer = null;
-    }
-    if (this.pendingSave) {
-      await this.pendingSave;
-    } else {
-      await this.persistToDisk();
-    }
-  }
-
-  private mapParams(params?: Record<string, unknown>) {
-    if (!params) return undefined;
-    return Object.fromEntries(Object.entries(params).map(([key, value]) => [`:${key}`, value ?? null]));
-  }
-
-  private getAll<T>(sql: string, params?: Record<string, unknown>): T[] {
-    if (!this.db) return [];
-    const stmt = this.db.prepare(sql);
-    if (params) {
-      stmt.bind(this.mapParams(params));
-    }
-    const rows: T[] = [];
-    while (stmt.step()) {
-      rows.push(stmt.getAsObject() as unknown as T);
-    }
-    stmt.free();
-    return rows;
-  }
-
-  private getOne<T>(sql: string, params?: Record<string, unknown>): T | undefined {
-    if (!this.db) return undefined;
-    const stmt = this.db.prepare(sql);
-    if (params) {
-      stmt.bind(this.mapParams(params));
-    }
-    const row = stmt.step() ? (stmt.getAsObject() as unknown as T) : undefined;
-    stmt.free();
-    return row;
-  }
-
-  private run(sql: string, params?: Record<string, unknown>) {
-    if (!this.db) return;
-    if (params) {
-      this.db.run(sql, this.mapParams(params));
-    } else {
-      this.db.run(sql);
-    }
-  }
-
-  private async withRead<T>(fn: () => T | Promise<T>) {
-    await this.init();
-    return this.mutex.runExclusive(async () => await fn());
-  }
-
-  private async withWrite<T>(fn: () => T | Promise<T>) {
-    await this.init();
-    return this.mutex.runExclusive(async () => {
-      const result = await fn();
-      this.schedulePersist();
-      return result;
     });
+    this.state.phases = phases;
+    this.state.subphases = subphases;
+    await this.persist();
   }
 
   async getActiveProject() {
-    return this.withRead(() => this.getOne<{ value: string }>('SELECT value FROM meta WHERE key = :key', { key: 'activeProject' })?.value ?? null);
+    await this.init();
+    return this.state!.meta.activeProjectId;
   }
 
   async setActiveProject(projectId: string) {
-    return this.withWrite(() => {
-      const exists = this.getOne('SELECT 1 FROM projects WHERE id = :id', { id: projectId });
+    await this.init();
+    return this.withLock(async () => {
+      const exists = this.state!.projects.find((p) => p.id === projectId);
       if (!exists) return null;
-      this.run(
-        'INSERT INTO meta (key, value) VALUES (:key, :value) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
-        { key: 'activeProject', value: projectId }
-      );
+      this.state!.meta.activeProjectId = projectId;
+      await this.persist();
       return projectId;
     });
   }
 
-  async listProjects(): Promise<Project[]> {
-    return this.withRead(() => this.getAll<Project>('SELECT * FROM projects ORDER BY created_at DESC'));
+  async listProjects() {
+    await this.init();
+    return this.state!.projects.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
   }
 
   async createProject(data: Omit<Project, 'id' | 'created_at'>) {
-    return this.withWrite(() => {
+    await this.init();
+    return this.withLock(async () => {
       const project: Project = { id: uuidv4(), created_at: new Date().toISOString(), ...data };
-      this.run(
-        'INSERT INTO projects (id, name, description, net_m2, gross_m2, volume_m3, created_at) VALUES (:id, :name, :description, :net_m2, :gross_m2, :volume_m3, :created_at)',
-        project
-      );
+      this.state!.projects.push(project);
+      if (!this.state!.meta.activeProjectId) {
+        this.state!.meta.activeProjectId = project.id;
+      }
+      await this.persist();
       return project;
     });
   }
 
   async updateProject(id: string, data: Partial<Omit<Project, 'id' | 'created_at'>>) {
-    const keys = Object.keys(data) as (keyof Project)[];
-    if (!keys.length) return null;
-    const setClause = keys.map((key) => `${key} = :${key}`).join(', ');
-    return this.withWrite(() => {
-      this.run(`UPDATE projects SET ${setClause} WHERE id = :id`, { ...data, id });
-      return this.getOne<Project>('SELECT * FROM projects WHERE id = :id', { id });
+    await this.init();
+    return this.withLock(async () => {
+      const idx = this.state!.projects.findIndex((p) => p.id === id);
+      if (idx === -1) return null;
+      this.state!.projects[idx] = { ...this.state!.projects[idx], ...data };
+      await this.persist();
+      return this.state!.projects[idx];
     });
-  }
-
-  async getProject(id: string) {
-    return this.withRead(() => this.getOne<Project>('SELECT * FROM projects WHERE id = :id', { id }));
   }
 
   async deleteProject(id: string) {
-    return this.withWrite(() => {
-      this.run('DELETE FROM projects WHERE id = :id', { id });
+    await this.init();
+    return this.withLock(async () => {
+      this.state!.projects = this.state!.projects.filter((p) => p.id !== id);
+      this.state!.costs = this.state!.costs.filter((c) => c.project_id !== id);
+      this.state!.documents = this.state!.documents.filter((d) => d.project_id !== id);
+      if (this.state!.meta.activeProjectId === id) {
+        this.state!.meta.activeProjectId = this.state!.projects[0]?.id ?? null;
+      }
+      await this.persist();
     });
   }
 
-  async listPhases(): Promise<Phase[]> {
-    return this.withRead(() => this.getAll<Phase>('SELECT * FROM phases ORDER BY order_no ASC'));
+  async listPhases() {
+    await this.init();
+    return [...this.state!.phases].sort((a, b) => a.order_no - b.order_no);
   }
 
   async createPhase(name: string) {
-    return this.withWrite(() => {
-      const current = this.getOne<{ no: number }>('SELECT COALESCE(MAX(order_no), 0) + 1 as no FROM phases')?.no ?? 1;
-      const phase: Phase = { id: uuidv4(), name, order_no: current };
-      this.run('INSERT INTO phases (id, name, order_no) VALUES (:id, :name, :order_no)', phase);
+    await this.init();
+    return this.withLock(async () => {
+      const order_no = (this.state!.phases.reduce((max, p) => Math.max(max, p.order_no), 0) || 0) + 1;
+      const phase: Phase = { id: uuidv4(), name, order_no };
+      this.state!.phases.push(phase);
+      await this.persist();
       return phase;
     });
   }
 
   async updatePhase(id: string, name: string) {
-    return this.withWrite(() => {
-      this.run('UPDATE phases SET name = :name WHERE id = :id', { id, name });
-      return this.getOne<Phase>('SELECT * FROM phases WHERE id = :id', { id });
+    await this.init();
+    return this.withLock(async () => {
+      const phase = this.state!.phases.find((p) => p.id === id);
+      if (!phase) return null;
+      phase.name = name;
+      await this.persist();
+      return phase;
     });
   }
 
-  async getPhase(id: string) {
-    return this.withRead(() => this.getOne<Phase>('SELECT * FROM phases WHERE id = :id', { id }));
-  }
-
   async deletePhase(id: string) {
-    return this.withWrite(() => {
-      this.run('DELETE FROM phases WHERE id = :id', { id });
+    await this.init();
+    return this.withLock(async () => {
+      this.state!.phases = this.state!.phases.filter((p) => p.id !== id);
+      this.state!.subphases = this.state!.subphases.filter((s) => s.phase_id !== id);
+      await this.persist();
     });
   }
 
   async reorderPhases(order: string[]) {
-    return this.withWrite(() => {
+    await this.init();
+    return this.withLock(async () => {
       order.forEach((phaseId, idx) => {
-        this.run('UPDATE phases SET order_no = :order_no WHERE id = :id', { id: phaseId, order_no: idx + 1 });
+        const phase = this.state!.phases.find((p) => p.id === phaseId);
+        if (phase) phase.order_no = idx + 1;
       });
-      return this.getAll<Phase>('SELECT * FROM phases ORDER BY order_no ASC');
+      await this.persist();
+      return this.listPhases();
     });
   }
 
   async listSubphases(phaseId: string) {
-    return this.withRead(() => this.getAll<Subphase>('SELECT * FROM subphases WHERE phase_id = :phase_id ORDER BY order_no ASC', { phase_id: phaseId }));
+    await this.init();
+    return this.state!.subphases.filter((s) => s.phase_id === phaseId).sort((a, b) => a.order_no - b.order_no);
   }
 
   async createSubphase(phaseId: string, name: string) {
-    return this.withWrite(() => {
-      const next = this.getOne<{ no: number }>('SELECT COALESCE(MAX(order_no), 0) + 1 as no FROM subphases WHERE phase_id = :phase_id', {
-        phase_id: phaseId,
-      })?.no ?? 1;
+    await this.init();
+    return this.withLock(async () => {
+      const next = (this.state!.subphases.filter((s) => s.phase_id === phaseId).reduce((max, s) => Math.max(max, s.order_no), 0) || 0) + 1;
       const sub: Subphase = { id: uuidv4(), phase_id: phaseId, name, order_no: next };
-      this.run('INSERT INTO subphases (id, phase_id, name, order_no) VALUES (:id, :phase_id, :name, :order_no)', sub);
+      this.state!.subphases.push(sub);
+      await this.persist();
       return sub;
     });
   }
 
   async updateSubphase(id: string, name: string) {
-    return this.withWrite(() => {
-      this.run('UPDATE subphases SET name = :name WHERE id = :id', { id, name });
-      return this.getOne<Subphase>('SELECT * FROM subphases WHERE id = :id', { id })!;
+    await this.init();
+    return this.withLock(async () => {
+      const sub = this.state!.subphases.find((s) => s.id === id);
+      if (!sub) return null;
+      sub.name = name;
+      await this.persist();
+      return sub;
     });
   }
 
   async deleteSubphase(id: string) {
-    return this.withWrite(() => {
-      this.run('DELETE FROM subphases WHERE id = :id', { id });
+    await this.init();
+    return this.withLock(async () => {
+      this.state!.subphases = this.state!.subphases.filter((s) => s.id !== id);
+      await this.persist();
     });
   }
 
-  async listContractors(): Promise<Contractor[]> {
-    return this.withRead(() => this.getAll<Contractor>('SELECT * FROM contractors ORDER BY created_at DESC'));
+  async listContractors() {
+    await this.init();
+    return [...this.state!.contractors].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
   }
 
   async createContractor(data: Omit<Contractor, 'id' | 'created_at'>) {
-    return this.withWrite(() => {
+    await this.init();
+    return this.withLock(async () => {
       const contractor: Contractor = { id: uuidv4(), created_at: new Date().toISOString(), ...data };
-      this.run(
-        'INSERT INTO contractors (id, name, tax_id, phone, email, address, created_at) VALUES (:id, :name, :tax_id, :phone, :email, :address, :created_at)',
-        contractor
-      );
+      this.state!.contractors.push(contractor);
+      await this.persist();
       return contractor;
     });
   }
 
   async updateContractor(id: string, data: Partial<Omit<Contractor, 'id' | 'created_at'>>) {
-    const keys = Object.keys(data) as (keyof Contractor)[];
-    if (!keys.length) return null;
-    const setClause = keys.map((key) => `${key} = :${key}`).join(', ');
-    return this.withWrite(() => {
-      this.run(`UPDATE contractors SET ${setClause} WHERE id = :id`, { ...data, id });
-      return this.getOne<Contractor>('SELECT * FROM contractors WHERE id = :id', { id });
+    await this.init();
+    return this.withLock(async () => {
+      const idx = this.state!.contractors.findIndex((c) => c.id === id);
+      if (idx === -1) return null;
+      this.state!.contractors[idx] = { ...this.state!.contractors[idx], ...data };
+      await this.persist();
+      return this.state!.contractors[idx];
     });
   }
 
   async deleteContractor(id: string) {
-    return this.withWrite(() => {
-      this.run('DELETE FROM contractors WHERE id = :id', { id });
+    await this.init();
+    return this.withLock(async () => {
+      this.state!.contractors = this.state!.contractors.filter((c) => c.id !== id);
+      await this.persist();
     });
   }
 
-  async listCosts(
-    filters: Partial<{
-      projectId: string;
-      dateFrom: string;
-      dateTo: string;
-      phaseId: string;
-      contractorId: string;
-      status: string;
-      category: string;
-      search: string;
-    }>
-  ) {
-    const clauses: string[] = [];
-    const params: Record<string, unknown> = {};
-    if (filters.projectId) {
-      clauses.push('project_id = :projectId');
-      params.projectId = filters.projectId;
-    }
-    if (filters.dateFrom) {
-      clauses.push('date >= :dateFrom');
-      params.dateFrom = filters.dateFrom;
-    }
-    if (filters.dateTo) {
-      clauses.push('date <= :dateTo');
-      params.dateTo = filters.dateTo;
-    }
-    if (filters.phaseId) {
-      clauses.push('phase_id = :phaseId');
-      params.phaseId = filters.phaseId;
-    }
-    if (filters.contractorId) {
-      clauses.push('contractor_id = :contractorId');
-      params.contractorId = filters.contractorId;
-    }
-    if (filters.status) {
-      clauses.push('status = :status');
-      params.status = filters.status;
-    }
-    if (filters.category) {
-      clauses.push('category = :category');
-      params.category = filters.category;
-    }
-    if (filters.search) {
-      clauses.push('(title LIKE :search OR invoice_no LIKE :search)');
-      params.search = `%${filters.search}%`;
-    }
-    const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
-    const sql = `SELECT * FROM costs ${where} ORDER BY date DESC`;
-    return this.withRead(() => this.getAll<Cost>(sql, params));
+  async listCosts(filters: Partial<{ projectId: string; dateFrom: string; dateTo: string; phaseId: string; contractorId: string; status: string; category: string; search: string }>) {
+    await this.init();
+    return this.state!.costs
+      .filter((c) => {
+        if (filters.projectId && c.project_id !== filters.projectId) return false;
+        if (filters.dateFrom && c.date < filters.dateFrom) return false;
+        if (filters.dateTo && c.date > filters.dateTo) return false;
+        if (filters.phaseId && c.phase_id !== filters.phaseId) return false;
+        if (filters.contractorId && c.contractor_id !== filters.contractorId) return false;
+        if (filters.status && c.status !== filters.status) return false;
+        if (filters.category && c.category !== filters.category) return false;
+        if (filters.search && !(c.title.includes(filters.search) || (c.invoice_no ?? '').includes(filters.search))) return false;
+        return true;
+      })
+      .sort((a, b) => (a.date < b.date ? 1 : -1));
   }
 
   async createCost(data: Omit<Cost, 'id' | 'created_at'>) {
-    return this.withWrite(() => {
+    await this.init();
+    return this.withLock(async () => {
       const cost: Cost = { id: uuidv4(), created_at: new Date().toISOString(), ...data };
-      this.run(
-        `INSERT INTO costs (
-          id, project_id, date, phase_id, subphase_id, contractor_id, title, category, amount_net, vat_rate, amount_gross, status, invoice_no, invoice_date, due_date, notes, created_at
-        ) VALUES (
-          :id, :project_id, :date, :phase_id, :subphase_id, :contractor_id, :title, :category, :amount_net, :vat_rate, :amount_gross, :status, :invoice_no, :invoice_date, :due_date, :notes, :created_at
-        )`,
-        cost
-      );
+      this.state!.costs.push(cost);
+      await this.persist();
       return cost;
     });
   }
 
   async updateCost(id: string, data: Partial<Omit<Cost, 'id' | 'created_at' | 'project_id'>>) {
-    const keys = Object.keys(data) as (keyof Cost)[];
-    if (!keys.length) return null;
-    const setClause = keys.map((key) => `${key} = :${key}`).join(', ');
-    return this.withWrite(() => {
-      this.run(`UPDATE costs SET ${setClause} WHERE id = :id`, { ...data, id });
-      return this.getOne<Cost>('SELECT * FROM costs WHERE id = :id', { id });
+    await this.init();
+    return this.withLock(async () => {
+      const idx = this.state!.costs.findIndex((c) => c.id === id);
+      if (idx === -1) return null;
+      this.state!.costs[idx] = { ...this.state!.costs[idx], ...data };
+      await this.persist();
+      return this.state!.costs[idx];
     });
   }
 
   async deleteCost(id: string) {
-    return this.withWrite(() => {
-      this.run('DELETE FROM costs WHERE id = :id', { id });
+    await this.init();
+    return this.withLock(async () => {
+      this.state!.costs = this.state!.costs.filter((c) => c.id !== id);
+      await this.persist();
     });
   }
 
   async attachDocument(doc: Omit<Document, 'id' | 'created_at'>) {
-    return this.withWrite(() => {
+    await this.init();
+    return this.withLock(async () => {
       const record: Document = { id: uuidv4(), created_at: new Date().toISOString(), ...doc };
-      this.run(
-        'INSERT INTO documents (id, project_id, cost_id, original_name, stored_name, stored_path, mime, size, created_at) VALUES (:id, :project_id, :cost_id, :original_name, :stored_name, :stored_path, :mime, :size, :created_at)',
-        record
-      );
+      this.state!.documents.push(record);
+      await this.persist();
       return record;
     });
   }
 
   async listDocuments(projectId: string) {
-    return this.withRead(() => this.getAll<Document>('SELECT * FROM documents WHERE project_id = :project_id ORDER BY created_at DESC', { project_id: projectId }));
+    await this.init();
+    return this.state!.documents.filter((d) => d.project_id === projectId).sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
   }
 
   async deleteDocument(id: string) {
-    return this.withWrite(() => {
-      this.run('DELETE FROM documents WHERE id = :id', { id });
+    await this.init();
+    return this.withLock(async () => {
+      const doc = this.state!.documents.find((d) => d.id === id);
+      if (doc && fs.existsSync(doc.stored_path)) {
+        fs.unlinkSync(doc.stored_path);
+      }
+      this.state!.documents = this.state!.documents.filter((d) => d.id !== id);
+      await this.persist();
     });
   }
 
   async exportCostsCsv(projectId?: string) {
+    await this.init();
     const costs = await this.listCosts({ projectId });
     const header = [
       'id',
@@ -603,10 +383,11 @@ class SqlJsDatabase {
   }
 
   async importCostsCsv(csv: string) {
+    await this.init();
     const [headerLine, ...rows] = csv.split(/\r?\n/).filter(Boolean);
     const headers = headerLine.split(',');
-    return this.withWrite(() => {
-      const imported: Cost[] = [];
+    const imported: Cost[] = [];
+    await this.withLock(async () => {
       rows.forEach((line) => {
         const values = line.split(',').map((v) => v.replace(/^"|"$/g, ''));
         const entry: Record<string, unknown> = {};
@@ -618,63 +399,69 @@ class SqlJsDatabase {
         entry.vat_rate = Number(entry.vat_rate);
         if (!entry.id) entry.id = uuidv4();
         if (!entry.created_at) entry.created_at = new Date().toISOString();
-        this.run(
-          `INSERT OR REPLACE INTO costs (
-            id, project_id, date, phase_id, subphase_id, contractor_id, title, category, amount_net, vat_rate, amount_gross, status, invoice_no, invoice_date, due_date, notes, created_at
-          ) VALUES (
-            :id, :project_id, :date, :phase_id, :subphase_id, :contractor_id, :title, :category, :amount_net, :vat_rate, :amount_gross, :status, :invoice_no, :invoice_date, :due_date, :notes, :created_at
-          )`,
-          entry
-        );
+        this.state!.costs.push(entry as Cost);
         imported.push(entry as Cost);
       });
-      return imported;
+      await this.persist();
     });
+    return imported;
   }
 
   async exportBackup(targetPath: string) {
     await this.init();
-    await this.flushPendingSave();
-    const uploads = getUploadsPath();
-    const dbPath = getDatabasePath();
-    const archiver = require('archiver');
-    const output = fs.createWriteStream(targetPath);
-    const archive = archiver('zip');
-    return new Promise<string>((resolve, reject) => {
-      output.on('close', () => resolve(targetPath));
-      archive.on('error', (err: Error) => reject(err));
+    await this.withLock(async () => {
+      await this.persist();
+      const uploads = getUploadsPath();
+      const archive = require('archiver')('zip');
+      const output = fs.createWriteStream(targetPath);
+      const promise = new Promise<void>((resolve, reject) => {
+        output.on('close', () => resolve());
+        archive.on('error', (err: Error) => reject(err));
+      });
       archive.pipe(output);
-      archive.file(dbPath, { name: 'app.sqlite' });
+      archive.file(getDataFilePath(), { name: 'data.json' });
       if (fs.existsSync(uploads)) {
         archive.directory(uploads, 'uploads');
       }
       archive.finalize();
+      await promise;
     });
+    return targetPath;
   }
 
   async importBackup(zipPath: string) {
-    await this.init();
-    await this.mutex.runExclusive(async () => {
-      await this.flushPendingSave();
+    await this.withLock(async () => {
+      await ensureDataDirectories();
       const AdmZip = require('adm-zip');
       const zip = new AdmZip(zipPath);
-      const dbPath = getDatabasePath();
+      const dataEntry = zip.getEntry('data.json');
+      if (dataEntry) {
+        const json = dataEntry.getData().toString('utf-8');
+        this.state = JSON.parse(json);
+      } else {
+        this.state = this.createEmptyState();
+      }
       const uploads = getUploadsPath();
-      await ensureDataDirectories();
-      zip.extractEntryTo('app.sqlite', path.dirname(dbPath), false, true);
-      zip.extractEntryTo('uploads/', path.dirname(uploads), false, true);
-      await this.loadDatabase();
-      this.applySchema();
+      zip.extractAllTo(getDataRoot(), true);
       await this.seedPhases();
+      await this.persist();
     });
+  }
+
+  async saveDocumentFile(sourcePath: string) {
+    await ensureDataDirectories();
+    const uploads = getUploadsPath();
+    const fileName = path.basename(sourcePath);
+    const storedName = `${Date.now()}-${fileName}`;
+    const targetPath = path.join(uploads, storedName);
+    fs.copyFileSync(sourcePath, targetPath);
+    const stats = fs.statSync(targetPath);
+    return { storedName, targetPath, size: stats.size };
   }
 }
 
-let dbInstance: SqlJsDatabase | null = null;
-
+let instance: JsonDatabase | null = null;
 export const getDb = () => {
-  if (!dbInstance) {
-    dbInstance = new SqlJsDatabase();
-  }
-  return dbInstance;
+  if (!instance) instance = new JsonDatabase();
+  return instance;
 };

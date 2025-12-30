@@ -1,4 +1,4 @@
-import { Search, Plus, Import, Export, ChevronDown } from 'lucide-react';
+import { Search, Plus, Upload, Download, ChevronDown } from 'lucide-react';
 import { useData } from '../store/useData';
 import { useMemo, useState } from 'react';
 import { CostModal } from '../features/costs/CostModal';
@@ -16,7 +16,11 @@ export function Topbar() {
           <select
             className="appearance-none pr-8 pl-4 py-2 rounded-lg border border-border bg-white shadow-sm text-sm font-medium min-w-[200px]"
             value={activeProjectId ?? ''}
-            onChange={(e) => void setActiveProject(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (!value) return;
+              void setActiveProject(value);
+            }}
           >
             {!projects.length && <option value="">Ni projektov</option>}
             {projects.map((p) => (
@@ -40,10 +44,10 @@ export function Topbar() {
           <Plus size={16} /> Nov strošek
         </button>
         <button className="px-3 py-2 rounded-lg border border-border bg-white text-sm flex items-center gap-2">
-          <Import size={16} /> Uvoz
+          <Upload size={16} /> Uvoz
         </button>
         <button className="px-3 py-2 rounded-lg border border-border bg-white text-sm flex items-center gap-2">
-          <Export size={16} /> Izvoz
+          <Download size={16} /> Izvoz
         </button>
       </div>
 
