@@ -1,7 +1,8 @@
 import fs from 'fs';
 import { promises as fsPromises } from 'fs';
 import path from 'path';
-import initSqlJs, { Database, SqlJsStatic } from 'sql.js';
+import initSqlJs from 'sql.js';
+import type { Database as SqlDatabase, SqlJsStatic } from 'sql.js';
 import { v4 as uuidv4 } from 'uuid';
 import { ensureDataDirectories, getDatabasePath, getUploadsPath } from '../utils/paths';
 
@@ -79,7 +80,7 @@ class Mutex {
 }
 
 class SqlJsDatabase {
-  private db: Database | null = null;
+  private db: SqlDatabase | null = null;
   private sqlJs: SqlJsStatic | null = null;
   private initialized = false;
   private initializationPromise: Promise<void> | null = null;
@@ -115,6 +116,9 @@ class SqlJsDatabase {
       if (err.code !== 'ENOENT') {
         throw err;
       }
+    }
+    if (!this.sqlJs) {
+      throw new Error('Failed to initialize sql.js');
     }
     this.db = buffer ? new this.sqlJs.Database(buffer) : new this.sqlJs.Database();
   }
