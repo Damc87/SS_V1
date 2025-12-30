@@ -1,10 +1,9 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import path from 'path';
-import { URL } from 'url';
 import './ipc';
 import { ensureDataDirectories } from './utils/paths';
 
-const isDev = process.env.VITE_DEV_SERVER_URL;
+const isDev = process.env.NODE_ENV !== 'production' && !app.isPackaged;
 
 async function createWindow() {
   await ensureDataDirectories();
@@ -21,11 +20,11 @@ async function createWindow() {
   });
 
   if (isDev) {
-    await win.loadURL(process.env.VITE_DEV_SERVER_URL as string);
+    await win.loadURL('http://localhost:5173');
     win.webContents.openDevTools({ mode: 'detach' });
   } else {
-    const indexHtml = new URL('../dist/index.html', `file://${__dirname}/`).toString();
-    await win.loadURL(indexHtml);
+    const indexHtml = path.join(__dirname, '../dist/index.html');
+    await win.loadFile(indexHtml);
   }
 }
 
