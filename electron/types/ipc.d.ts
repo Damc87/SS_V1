@@ -24,7 +24,7 @@ export type MainChannels =
   | 'costs:create'
   | 'costs:update'
   | 'costs:delete'
-  | 'documents:attachPdf'
+  | 'documents:attach'
   | 'documents:listByProject'
   | 'documents:open'
   | 'documents:delete'
@@ -35,14 +35,64 @@ export type MainChannels =
   | 'paths:userData'
   | 'app:openPath';
 
-export type IpcChannels = {
-  invoke: (channel: MainChannels, ...args: any[]) => Promise<any>;
-  on: (channel: MainChannels, listener: (event: IpcRendererEvent, ...args: any[]) => void) => void;
-  removeListener: (channel: MainChannels, listener: (event: IpcRendererEvent, ...args: any[]) => void) => void;
-};
-
 declare global {
   interface Window {
-    electron: IpcChannels;
+    api: {
+      projects: {
+        list: () => Promise<any>;
+        create: (data: any) => Promise<any>;
+        update: (id: string, data: any) => Promise<any>;
+        remove: (id: string) => Promise<void>;
+        setActive: (id: string) => Promise<string | null>;
+        getActive: () => Promise<string | null>;
+      };
+      phases: {
+        list: () => Promise<any>;
+        create: (name: string) => Promise<any>;
+        update: (id: string, name: string) => Promise<any>;
+        remove: (id: string) => Promise<void>;
+        reorder: (order: string[]) => Promise<any>;
+        subphases: {
+          list: (phaseId: string) => Promise<any>;
+          create: (phaseId: string, name: string) => Promise<any>;
+          update: (id: string, name: string) => Promise<any>;
+          remove: (id: string) => Promise<void>;
+        };
+      };
+      contractors: {
+        list: () => Promise<any>;
+        create: (data: any) => Promise<any>;
+        update: (id: string, data: any) => Promise<any>;
+        remove: (id: string) => Promise<void>;
+      };
+      costs: {
+        list: (filters: Record<string, unknown>) => Promise<any>;
+        create: (data: any) => Promise<any>;
+        update: (id: string, data: any) => Promise<any>;
+        remove: (id: string) => Promise<void>;
+      };
+      documents: {
+        attach: (payload: { projectId: string; costId?: string; filePath: string }) => Promise<any>;
+        listByProject: (projectId: string) => Promise<any>;
+        open: (storedPath: string) => Promise<any>;
+        remove: (id: string) => Promise<void>;
+      };
+      export: {
+        csv: (projectId?: string) => Promise<string>;
+        backup: () => Promise<string | null>;
+      };
+      import: {
+        csv: (csv: string) => Promise<any>;
+        backup: () => Promise<boolean | null>;
+      };
+      paths: {
+        userData: () => Promise<string>;
+      };
+      app: {
+        openPath: (targetPath: string) => Promise<string>;
+      };
+      on: (channel: MainChannels, listener: (event: IpcRendererEvent, ...args: any[]) => void) => void;
+      removeListener: (channel: MainChannels, listener: (event: IpcRendererEvent, ...args: any[]) => void) => void;
+    };
   }
 }

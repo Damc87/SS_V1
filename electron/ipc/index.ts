@@ -1,8 +1,6 @@
 import { ipcMain, dialog, app, shell } from 'electron';
-import fs from 'fs';
 import path from 'path';
 import { getDb } from '../db';
-import { getUploadsPath, ensureDataDirectories } from '../utils/paths';
 
 const db = getDb();
 
@@ -33,22 +31,16 @@ ipcMain.handle('costs:create', (_e, data) => db.createCost(data));
 ipcMain.handle('costs:update', (_e, id, data) => db.updateCost(id, data));
 ipcMain.handle('costs:delete', (_e, id) => db.deleteCost(id));
 
-ipcMain.handle('documents:attachPdf', async (_e, { projectId, costId, filePath }) => {
-  await ensureDataDirectories();
-  const uploads = getUploadsPath();
-  const fileName = path.basename(filePath);
-  const storedName = `${Date.now()}-${fileName}`;
-  const targetPath = path.join(uploads, storedName);
-  fs.copyFileSync(filePath, targetPath);
-  const stats = fs.statSync(targetPath);
-  const doc = db.attachDocument({
+ipcMain.handle('documents:attach', async (_e, { projectId, costId, filePath }) => {
+  const { storedName, targetPath, size } = await db.saveDocumentFile(filePath);
+  const doc = await db.attachDocument({
     project_id: projectId,
     cost_id: costId,
-    original_name: fileName,
+    original_name: path.basename(filePath),
     stored_name: storedName,
     stored_path: targetPath,
     mime: 'application/pdf',
-    size: stats.size,
+    size,
   });
   return doc;
 });
