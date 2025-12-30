@@ -8,7 +8,7 @@ export const getDataRoot = () => {
 };
 
 export const getDatabasePath = () => {
-  return path.join(getDataRoot(), 'data', 'app.db');
+  return path.join(getDataRoot(), 'data', 'app.sqlite');
 };
 
 export const getUploadsPath = () => {

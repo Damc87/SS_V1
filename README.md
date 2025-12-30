@@ -1,10 +1,10 @@
 # Gradnja – Stroški
 
-Offline-first namizna aplikacija za spremljanje stroškov gradnje. Grajena z Electron + Vite + React + TypeScript + Tailwind + framer-motion + Recharts ter lokalno SQLite bazo (better-sqlite3).
+Offline-first namizna aplikacija za spremljanje stroškov gradnje. Grajena z Electron + Vite + React + TypeScript + Tailwind + framer-motion + Recharts ter lokalno SQLite WASM bazo (sql.js) – brez Pythona / node-gyp.
 
 ## Hitri začetek (Windows-first)
 
-1. Namesti odvisnosti
+1. Namesti odvisnosti (Python ni potreben)
    ```bash
    npm install
    ```
@@ -29,6 +29,9 @@ npm run build
 - `/src/styles`: globalni stili
 
 ## Podatki & poti
-- Baza: `%APPDATA%/GradnjaStroski/data/app.db`
+- Baza: `%APPDATA%/GradnjaStroski/data/app.sqlite`
 - Uploadi: `%APPDATA%/GradnjaStroski/data/uploads`
 - Uporabljene poti vedno prek `path.join` in `app.getPath('userData')`
+
+### Ponastavi podatke
+Z zaprtim programom izbriši datoteko `%APPDATA%/GradnjaStroski/data/app.sqlite` (po potrebi tudi mapo uploads). Ob ponovnem zagonu se baza znova inicializira z osnovnimi fazami.
