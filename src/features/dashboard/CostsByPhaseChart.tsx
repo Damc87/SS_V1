@@ -5,10 +5,18 @@ import { useData } from '../../store/useData';
 export function CostsByPhaseChart() {
   const { costs, phases } = useData();
   const data = useMemo(() => {
-    return phases.map((p) => ({
+    const values = phases.map((p) => ({
       name: p.name,
       value: costs.filter((c) => c.phase_id === p.id).reduce((acc, c) => acc + c.amount_gross, 0),
     }));
+    if (!values.length) {
+      return [
+        { name: 'Priprava', value: 1200 },
+        { name: 'Gradnja', value: 2400 },
+        { name: 'Zaključek', value: 800 },
+      ];
+    }
+    return values;
   }, [costs, phases]);
 
   return (

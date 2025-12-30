@@ -1,5 +1,7 @@
 import { Component, type ReactNode } from 'react';
 import { toast } from 'sonner';
+import { AlertCircle } from 'lucide-react';
+import { Button } from './ui/button';
 
 type Props = { children: ReactNode };
 type State = { hasError: boolean; message?: string };
@@ -27,14 +29,24 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 flex items-center justify-center">
-          <div className="max-w-md w-full bg-white/80 backdrop-blur rounded-2xl border border-border shadow-soft p-6 space-y-3 text-center">
-            <div className="text-lg font-semibold text-slate-900">Prišlo je do napake</div>
-            <p className="text-sm text-slate-600">{this.state.message ?? 'Nekaj je šlo narobe.'}</p>
-            <div className="flex items-center justify-center gap-3">
-              <button className="px-4 py-2 rounded-xl bg-primary text-white shadow-soft" onClick={this.handleReload}>
-                Osveži
-              </button>
+        <div className="min-h-screen bg-gradient-to-br from-white via-slate-50 to-slate-100 flex items-center justify-center px-4">
+          <div className="glass max-w-lg w-full rounded-3xl border border-border/70 shadow-card p-8 space-y-4">
+            <div className="flex items-start gap-3">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-50 text-red-500 shadow-inner">
+                <AlertCircle className="h-5 w-5" />
+              </span>
+              <div className="space-y-2 text-left">
+                <div className="text-xl font-semibold text-slate-900">Prišlo je do napake</div>
+                <p className="text-sm text-slate-600">{this.state.message ?? 'Nekaj je šlo narobe. Poskusite znova.'}</p>
+                <div className="flex items-center gap-3 pt-2">
+                  <Button onClick={this.handleReload} variant="primary">
+                    Osveži aplikacijo
+                  </Button>
+                  <Button variant="ghost" onClick={() => this.setState({ hasError: false })}>
+                    Skrij sporočilo
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

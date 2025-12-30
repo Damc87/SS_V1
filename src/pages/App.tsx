@@ -1,27 +1,30 @@
-import { useEffect, useState } from 'react';
-import { Layout } from '../layouts/Layout';
-import { ErrorBoundary } from '../components/ErrorBoundary';
+import { Navigate, Route, Routes, HashRouter } from 'react-router-dom';
+import { AppLayout } from '../layouts/Layout';
+import { Dashboard } from '../features/dashboard/Dashboard';
+import { ProjectsPage } from '../features/projects/ProjectsPage';
+import { PhasesPage } from '../features/phases/PhasesPage';
+import { CostsPage } from '../features/costs/CostsPage';
+import { ContractorsPage } from '../features/contractors/ContractorsPage';
+import { DocumentsPage } from '../features/documents/DocumentsPage';
+import { SettingsPage } from '../features/settings/SettingsPage';
 import { Toaster } from 'sonner';
 
 export const App = () => {
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    setReady(true);
-  }, []);
-
-  if (!ready) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white to-slate-50 text-slate-700">
-        <div className="rounded-2xl border border-border bg-white px-6 py-4 shadow-soft">Loading …</div>
-      </div>
-    );
-  }
-
   return (
-    <ErrorBoundary>
-      <Layout />
-      <Toaster position="top-right" richColors />
-    </ErrorBoundary>
+    <HashRouter>
+      <Toaster position="top-right" richColors duration={3200} />
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="/projekti" element={<ProjectsPage />} />
+          <Route path="/faze" element={<PhasesPage />} />
+          <Route path="/stroski" element={<CostsPage />} />
+          <Route path="/izvajalci" element={<ContractorsPage />} />
+          <Route path="/dokumenti" element={<DocumentsPage />} />
+          <Route path="/nastavitve" element={<SettingsPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </HashRouter>
   );
 };

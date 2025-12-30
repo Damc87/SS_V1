@@ -1,13 +1,18 @@
-import { Card } from '../../components/ui/Card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
 
 export function StyleGuide() {
   return (
     <div className="space-y-4">
-      <Card title="Gumbi" subtitle="Glavni in sekundarni">
-        <div className="flex gap-3">
-          <button className="px-4 py-2 rounded-xl bg-primary text-white shadow-soft font-semibold">Primarni</button>
-          <button className="px-4 py-2 rounded-xl border border-border bg-white text-slate-700">Sekundarni</button>
-        </div>
+      <Card>
+        <CardHeader>
+          <CardDescription>Gumbi</CardDescription>
+          <CardTitle>Glavni in sekundarni</CardTitle>
+        </CardHeader>
+        <CardContent className="flex gap-3">
+          <Button variant="primary">Primarni</Button>
+          <Button variant="secondary">Sekundarni</Button>
+        </CardContent>
       </Card>
     </div>
   );

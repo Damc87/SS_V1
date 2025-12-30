@@ -26,13 +26,22 @@ Offline-first namizna aplikacija za spremljanje stroškov gradnje. Grajena z Ele
    npm run dist
    ```
 
+## Hitri zagon (renderer + Electron)
+- Namesti odvisnosti: `npm install`
+- Zaženi razvoj: `npm run dev`
+
 ## Struktura
 - `/electron`: glavni proces, JSON shramba in IPC handlerji
-- `/src`: renderer (React + Tailwind + shadcn-style UI)
-- `/src/features`: domenske funkcionalnosti (dashboard, costs, phases, contractors, documents, settings, style-guide)
-- `/src/components`: skupne UI komponente in error boundary
+- `/src`: renderer (React + Tailwind + shadcn-style UI, routing)
+- `/src/features`: domenske funkcionalnosti (dashboard, projekti, stroški, faze, izvajalci, dokumenti, nastavitve)
+- `/src/components`: skupne UI komponente, layout skelet, ErrorBoundary/Loading
 - `/src/store`: globalno stanje (zustand)
 - `/src/styles`: globalni stili
+
+### Struktura strani
+- **Dashboard:** premium “glass” kartice, grafi (stroški po fazah, top izvajalci, kumulativa).
+- **Projekti:** upravljanje aktivnega projekta, tabs za pregled/dodajanje in prazno stanje.
+- **Faze / Stroški / Izvajalci / Dokumenti / Nastavitve:** usklajeni card layouti, prazna stanja, globalni loader/toaster in ErrorBoundary, da UI nikoli ne ostane bel.
 
 ## Podatki & poti (Windows)
 - Vsi podatki: `%APPDATA%/GradnjaStroski/data.json`

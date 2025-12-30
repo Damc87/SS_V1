@@ -11,6 +11,13 @@ export function CumulatedLineChart() {
       totals[month] = (totals[month] || 0) + c.amount_gross;
     });
     const entries = Object.entries(totals).sort(([a], [b]) => (a > b ? 1 : -1));
+    if (!entries.length) {
+      return [
+        { name: '2024-01', value: 1200 },
+        { name: '2024-02', value: 1800 },
+        { name: '2024-03', value: 2600 },
+      ];
+    }
     let running = 0;
     return entries.map(([month, value]) => {
       running += value;
