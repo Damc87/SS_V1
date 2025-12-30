@@ -11,6 +11,6 @@
     "types": ["node"],
     "resolveJsonModule": true
   },
-  "include": ["electron/**/*.ts"],
+  "include": ["electron/**/*.ts", "electron/**/*.d.ts"],
   "exclude": ["node_modules"]
 }
