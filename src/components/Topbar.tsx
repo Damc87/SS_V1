@@ -18,7 +18,7 @@ export function Topbar() {
             value={activeProjectId ?? ''}
             onChange={(e) => void setActiveProject(e.target.value)}
           >
-            {!projects.length && <option value=\"\">Ni projektov</option>}
+            {!projects.length && <option value="">Ni projektov</option>}
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
