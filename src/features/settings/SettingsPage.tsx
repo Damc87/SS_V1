@@ -1,23 +1,29 @@
-import { Card } from '../../components/ui/Card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Input } from '../../components/ui/input';
+import { Button } from '../../components/ui/button';
 
 export function SettingsPage() {
   return (
     <div className="space-y-4">
-      <Card title="Nastavitve" subtitle="Valuta, DDV, backup">
-        <div className="space-y-3 text-sm text-slate-700">
-          <div className="flex items-center gap-3">
+      <Card>
+        <CardHeader>
+          <CardDescription>Nastavitve</CardDescription>
+          <CardTitle>Valuta, DDV, backup</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm text-slate-700">
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
             <label className="w-32 text-slate-500">Valuta</label>
-            <input className="border border-border rounded-xl px-3 py-2" defaultValue="EUR" />
+            <Input className="sm:max-w-[160px]" defaultValue="EUR" />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
             <label className="w-32 text-slate-500">Privzeti DDV</label>
-            <input className="border border-border rounded-xl px-3 py-2" defaultValue="22" type="number" />
+            <Input className="sm:max-w-[160px]" defaultValue="22" type="number" />
           </div>
-          <div className="flex gap-2">
-            <button className="px-4 py-2 rounded-xl bg-primary text-white shadow-soft">Izvozi backup</button>
-            <button className="px-4 py-2 rounded-xl border border-border">Uvozi backup</button>
+          <div className="flex flex-wrap gap-2 pt-2">
+            <Button variant="primary">Izvozi backup</Button>
+            <Button variant="outline">Uvozi backup</Button>
           </div>
-        </div>
+        </CardContent>
       </Card>
     </div>
   );

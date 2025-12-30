@@ -1,6 +1,10 @@
 import { useState } from 'react';
-import { Card } from '../../components/ui/Card';
+import { Flag } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
 import { useData } from '../../store/useData';
+import { EmptyState } from '../../components/EmptyState';
 
 export function PhasesPage() {
   const { phases, addPhase } = useData();
@@ -13,23 +17,31 @@ export function PhasesPage() {
 
   return (
     <div className="space-y-4">
-      <Card title="Faze" subtitle="Šifrant faz in podfaz">
-        <div className="space-y-3">
-          <div className="flex gap-2">
-            <input className="border border-border rounded-xl px-3 py-2" placeholder="Dodaj fazo" value={newName} onChange={(e) => setNewName(e.target.value)} />
-            <button className="px-4 py-2 rounded-xl bg-primary text-white shadow-soft" disabled={!newName} onClick={handleAdd}>
+      <Card>
+        <CardHeader>
+          <CardDescription>Faze</CardDescription>
+          <CardTitle>Šifrant faz in podfaz</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input className="sm:max-w-sm" placeholder="Dodaj fazo" value={newName} onChange={(e) => setNewName(e.target.value)} />
+            <Button variant="primary" disabled={!newName} onClick={handleAdd}>
               Dodaj
-            </button>
+            </Button>
           </div>
-          <ul className="space-y-2">
-            {phases.map((p) => (
-              <li key={p.id} className="rounded-xl border border-border px-3 py-2 flex items-center justify-between bg-white">
-                <div className="font-medium">{p.name}</div>
-                <span className="text-xs text-slate-500">Vrstni red: {p.order_no}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+          {!phases.length ? (
+            <EmptyState title="Ni faz" description="Dodajte novo fazo, da lahko sledite stroškom." icon={<Flag className="h-5 w-5" />} />
+          ) : (
+            <ul className="grid gap-2 md:grid-cols-2">
+              {phases.map((p) => (
+                <li key={p.id} className="flex items-center justify-between rounded-xl border border-border bg-white px-3 py-3 text-sm shadow-inner">
+                  <div className="font-medium text-slate-900">{p.name}</div>
+                  <span className="rounded-full bg-muted px-2 py-1 text-xs text-slate-500">Vrstni red: {p.order_no}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
       </Card>
     </div>
   );
