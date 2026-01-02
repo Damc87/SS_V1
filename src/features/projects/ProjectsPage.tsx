@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FolderPlus, MapPin, Sparkles } from 'lucide-react';
+import { FolderPlus, MapPin, Sparkles, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useData } from '../../store/useData';
 import { Button } from '../../components/ui/button';
@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { EmptyState } from '../../components/EmptyState';
 
 export function ProjectsPage() {
-  const { projects, activeProjectId, setActiveProject, addProject } = useData();
+  const { projects, activeProjectId, setActiveProject, addProject, deleteProject } = useData();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [tab, setTab] = useState('overview');
@@ -112,6 +112,10 @@ export function ProjectsPage() {
                           </Button>
                         )}
                         <span className="rounded-full border border-border/70 px-3 py-1 text-xs font-medium text-muted-foreground">ID: {project.id.slice(0, 6)}</span>
+                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDelete(project.id)}>
+                          <Trash2 className="h-4 w-4" />
+                          Izbriši
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -145,3 +149,12 @@ export function ProjectsPage() {
     </div>
   );
 }
+  const handleDelete = async (id: string) => {
+    const confirm = window.confirm('Želite arhivirati projekt? Podatki bodo ostali v shrambi.');
+    if (!confirm) return;
+    try {
+      await deleteProject(id);
+    } catch {
+      // toast handled globally
+    }
+  };

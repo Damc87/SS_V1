@@ -26,10 +26,11 @@ declare global {
         };
       };
       contractors: {
-        list: (filters?: { projectId?: string }) => Promise<Contractor[]>;
+        list: (filters?: { projectId?: string; includeArchived?: boolean }) => Promise<Contractor[]>;
         create: (data: Omit<Contractor, 'id' | 'created_at'>) => Promise<Contractor>;
         update: (id: string, data: Partial<Omit<Contractor, 'id' | 'created_at'>>) => Promise<Contractor | null>;
         remove: (id: string) => Promise<void>;
+        archive: (id: string, archived: boolean) => Promise<Contractor | null>;
       };
       costs: {
         list: (filters: Record<string, unknown>) => Promise<CostListResult>;
@@ -39,6 +40,9 @@ declare global {
         duplicate: (id: string) => Promise<Cost | null>;
         bulkCreate: (entries: CostInput[]) => Promise<Cost[]>;
         planVsActual: (projectId: string) => Promise<unknown>;
+        setArchived: (id: string, archived: boolean) => Promise<Cost | null>;
+        attachPdf: (costId: string, filePath: string) => Promise<any>;
+        openPdf: (storedPath: string) => Promise<string>;
       };
       documents: {
         attach: (payload: { projectId: string; costId?: string; filePath: string }) => Promise<Document>;

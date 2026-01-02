@@ -4,7 +4,6 @@ import { CostsByPhaseChart } from './CostsByPhaseChart';
 import { TopContractorsChart } from './TopContractorsChart';
 import { CumulatedLineChart } from './CumulatedLineChart';
 import { useData } from '../../store/useData';
-import { ProjectsPanel } from '../projects/ProjectsPanel';
 import { cn } from '../../lib/utils';
 
 export function Dashboard() {
@@ -12,19 +11,20 @@ export function Dashboard() {
   const hasCosts = costs.length > 0;
 
   const summary = useMemo(() => {
-    const total = costs.reduce((acc, c) => acc + c.amount_gross, 0);
+    const activeCosts = costs.filter((c) => !c.is_archived);
+    const total = activeCosts.reduce((acc, c) => acc + c.amount_gross, 0);
     const now = new Date();
     const month = now.toISOString().slice(0, 7);
-    const thisMonth = costs.filter((c) => c.date.startsWith(month)).reduce((acc, c) => acc + c.amount_gross, 0);
+    const thisMonth = activeCosts.filter((c) => (c.invoice_month || c.invoice_date).startsWith(month)).reduce((acc, c) => acc + c.amount_gross, 0);
     const contractorTotals = contractors.map((c) => ({
       id: c.id,
       name: c.name,
-      total: costs.filter((cost) => cost.contractor_id === c.id).reduce((acc, cost) => acc + cost.amount_gross, 0),
+      total: activeCosts.filter((cost) => cost.contractor_id === c.id).reduce((acc, cost) => acc + cost.amount_gross, 0),
     }));
     const phaseTotals = phases.map((p) => ({
       id: p.id,
       name: p.name,
-      total: costs.filter((cost) => cost.phase_id === p.id).reduce((acc, cost) => acc + cost.amount_gross, 0),
+      total: activeCosts.filter((cost) => cost.phase_id === p.id).reduce((acc, cost) => acc + cost.amount_gross, 0),
     }));
     const topContractor = contractorTotals.sort((a, b) => b.total - a.total)[0];
     const expensivePhase = phaseTotals.sort((a, b) => b.total - a.total)[0];
@@ -113,8 +113,6 @@ export function Dashboard() {
           <CumulatedLineChart />
         </CardContent>
       </Card>
-
-      <ProjectsPanel />
     </div>
   );
 }

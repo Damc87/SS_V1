@@ -22,6 +22,7 @@ export type MainChannels =
   | 'contractors:create'
   | 'contractors:update'
   | 'contractors:delete'
+  | 'contractors:archive'
   | 'costs:list'
   | 'costs:create'
   | 'costs:update'
@@ -29,6 +30,9 @@ export type MainChannels =
   | 'costs:duplicate'
   | 'costs:bulkCreate'
   | 'costs:planVsActual'
+  | 'costs:setArchived'
+  | 'costs:attachPdf'
+  | 'costs:openPdf'
   | 'documents:attach'
   | 'documents:listByProject'
   | 'documents:open'
@@ -66,10 +70,11 @@ declare global {
         };
       };
       contractors: {
-        list: () => Promise<any>;
+        list: (filters?: { projectId?: string; includeArchived?: boolean }) => Promise<any>;
         create: (data: any) => Promise<any>;
         update: (id: string, data: any) => Promise<any>;
         remove: (id: string) => Promise<void>;
+        archive: (id: string, archived: boolean) => Promise<any>;
       };
       costs: {
         list: (filters: Record<string, unknown>) => Promise<any>;
@@ -79,6 +84,9 @@ declare global {
         duplicate: (id: string) => Promise<any>;
         bulkCreate: (entries: any[]) => Promise<any>;
         planVsActual: (projectId: string) => Promise<any>;
+        setArchived: (id: string, archived: boolean) => Promise<any>;
+        attachPdf: (costId: string, filePath: string) => Promise<any>;
+        openPdf: (storedPath: string) => Promise<any>;
       };
       documents: {
         attach: (payload: { projectId: string; costId?: string; filePath: string }) => Promise<any>;

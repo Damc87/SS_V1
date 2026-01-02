@@ -22,10 +22,11 @@ ipcMain.handle('subphases:update', (_e, id, payload) => db.updateSubphase(id, pa
 ipcMain.handle('subphases:delete', (_e, id) => db.deleteSubphase(id));
 ipcMain.handle('subphases:list', (_e, phaseId) => db.listSubphases(phaseId));
 
-ipcMain.handle('contractors:list', (_e, filters) => db.listContractors(filters?.projectId));
+ipcMain.handle('contractors:list', (_e, filters) => db.listContractors(filters?.projectId, filters?.includeArchived));
 ipcMain.handle('contractors:create', (_e, data) => db.createContractor(data));
 ipcMain.handle('contractors:update', (_e, id, data) => db.updateContractor(id, data));
 ipcMain.handle('contractors:delete', (_e, id) => db.deleteContractor(id));
+ipcMain.handle('contractors:archive', (_e, id, archived) => db.archiveContractor(id, archived));
 
 ipcMain.handle('costs:list', (_e, filters) => db.listCosts(filters));
 ipcMain.handle('costs:create', (_e, data) => db.createCost(data));
@@ -34,6 +35,9 @@ ipcMain.handle('costs:delete', (_e, id) => db.deleteCost(id));
 ipcMain.handle('costs:duplicate', (_e, id) => db.duplicateCost(id));
 ipcMain.handle('costs:bulkCreate', (_e, list) => db.bulkCreateCosts(list));
 ipcMain.handle('costs:planVsActual', (_e, projectId) => db.phasePlanVsActual(projectId));
+ipcMain.handle('costs:setArchived', (_e, id, archived) => db.setCostArchived(id, archived));
+ipcMain.handle('costs:attachPdf', (_e, costId, filePath) => db.attachPdfToCost(costId, filePath));
+ipcMain.handle('costs:openPdf', (_e, storedPath) => shell.openPath(storedPath));
 
 ipcMain.handle('documents:attach', async (_e, { projectId, costId, filePath }) => {
   const { storedName, targetPath, size } = await db.saveDocumentFile(filePath);
