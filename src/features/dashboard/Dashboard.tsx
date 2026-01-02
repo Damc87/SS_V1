@@ -86,11 +86,11 @@ export function Dashboard() {
       <div className="grid gap-4 xl:grid-cols-3">
         <Card className="xl:col-span-2 glass">
           <CardHeader>
-            <CardDescription>Stroški po fazah</CardDescription>
-            <CardTitle>Plan vs. realizacija</CardTitle>
+            <CardDescription>Kumulativa</CardDescription>
+            <CardTitle>Mesečni trend</CardTitle>
           </CardHeader>
           <CardContent>
-            <CostsByPhaseChart />
+            <CumulatedLineChart />
           </CardContent>
         </Card>
         <Card className="glass">
@@ -104,13 +104,13 @@ export function Dashboard() {
         </Card>
       </div>
 
-      <Card>
+      <Card className="glass">
         <CardHeader>
-          <CardDescription>Kumulativa</CardDescription>
-          <CardTitle>Mesečni trend</CardTitle>
+          <CardDescription>Stroški po fazah</CardDescription>
+          <CardTitle>Plan vs. realizacija</CardTitle>
         </CardHeader>
         <CardContent>
-          <CumulatedLineChart />
+          <CostsByPhaseChart />
         </CardContent>
       </Card>
     </div>
