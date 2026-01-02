@@ -1,4 +1,4 @@
-import type { Contractor, Cost, CostInput, CostListResult, Document, MainPhase, Project, Subphase } from './types';
+import type { Contractor, Cost, CostInput, CostListResult, Document, MainPhase, PhasesImportResult, Project, Subphase } from './types';
 
 declare global {
   interface Window {
@@ -13,11 +13,11 @@ declare global {
       };
       phases: {
         list: () => Promise<MainPhase[]>;
-        create: (payload: { name: string; order_no?: number; id?: string }) => Promise<MainPhase>;
+        create: (payload: { name: string; order_no?: number; id?: string; project_id?: string }) => Promise<MainPhase>;
         update: (id: string, payload: string | { name?: string; budget_planned?: number; order_no?: number }) => Promise<MainPhase | null>;
         remove: (id: string) => Promise<void>;
         reorder: (order: string[]) => Promise<MainPhase[]>;
-        importCsv: (csv: string) => Promise<void>;
+        importCsv: (csv: string, projectId: string) => Promise<PhasesImportResult>;
         subphases: {
           list: (phaseId: string) => Promise<Subphase[]>;
           create: (phaseId: string, payload: { name: string; order_no?: number; id?: string }) => Promise<Subphase>;

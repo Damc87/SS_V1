@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcRendererEvent } from 'electron';
-import type { Cost, Contractor, CostInput, CostListResult, Document, Phase, Project, Subphase } from './types/models';
+import type { Cost, Contractor, CostInput, CostListResult, Document, Phase, PhasesImportResult, Project, Subphase } from './types/models';
 
 type Listener = (event: IpcRendererEvent, ...args: any[]) => void;
 
@@ -17,12 +17,12 @@ const api = {
   },
   phases: {
     list: () => invoke<Phase[]>('phases:list'),
-    create: (payload: { name: string; order_no?: number; id?: string }) => invoke<Phase>('phases:create', payload),
+    create: (payload: { name: string; order_no?: number; id?: string; project_id?: string }) => invoke<Phase>('phases:create', payload),
     update: (id: string, payload: string | { name?: string; budget_planned?: number; order_no?: number }) =>
       invoke<Phase | null>('phases:update', id, payload),
     remove: (id: string) => invoke<void>('phases:delete', id),
     reorder: (order: string[]) => invoke<Phase[]>('phases:reorder', order),
-    importCsv: (csv: string) => invoke<void>('phases:importCsv', csv),
+    importCsv: (csv: string, projectId: string) => invoke<PhasesImportResult>('phases:importCsv', csv, projectId),
     subphases: {
       list: (phaseId: string) => invoke<Subphase[]>('subphases:list', phaseId),
       create: (phaseId: string, payload: { name: string; order_no?: number; id?: string }) => invoke<Subphase>('subphases:create', phaseId, payload),

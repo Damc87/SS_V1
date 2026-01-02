@@ -1,4 +1,5 @@
 import type { IpcRendererEvent } from 'electron';
+import type { PhasesImportResult } from './models';
 
 export type MainChannels =
   | 'projects:list'
@@ -56,7 +57,7 @@ declare global {
         update: (id: string, payload: any) => Promise<any>;
         remove: (id: string) => Promise<void>;
         reorder: (order: string[]) => Promise<any>;
-        importCsv: (csv: string) => Promise<void>;
+        importCsv: (csv: string, projectId: string) => Promise<PhasesImportResult>;
         subphases: {
           list: (phaseId: string) => Promise<any>;
           create: (phaseId: string, payload: any) => Promise<any>;
