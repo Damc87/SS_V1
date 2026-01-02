@@ -29,7 +29,7 @@ const api = {
     },
   },
   contractors: {
-    list: () => invoke<Contractor[]>('contractors:list'),
+    list: (filters?: { projectId?: string }) => invoke<Contractor[]>('contractors:list', filters),
     create: (data: Omit<Contractor, 'id' | 'created_at'>) => invoke<Contractor>('contractors:create', data),
     update: (id: string, data: Partial<Omit<Contractor, 'id' | 'created_at'>>) => invoke<Contractor | null>('contractors:update', id, data),
     remove: (id: string) => invoke<void>('contractors:delete', id),

@@ -30,6 +30,10 @@ Offline-first namizna aplikacija za spremljanje stroškov gradnje. Grajena z Ele
 - Namesti odvisnosti: `npm install`
 - Zaženi razvoj: `npm run dev`
 
+## Dodajanje podatkov
+- Izvajalci se dodajajo v meniju **Izvajalci** (`/izvajalci`), kjer jih povežete s fazo projekta in jih lahko kasneje uredite ali izbrišete.
+- Stroške dodate na strani **Stroški** (`/stroski`); izberete fazo in izvajalca, vnesete opis ter ceno, zapis pa lahko kasneje uredite ali izbrišete.
+
 ## Tema (light/dark)
 - Tema se privzeto nastavi glede na sistemski `prefers-color-scheme` in se ob spremembi sistema samodejno posodobi.
 - V zgornji orodni vrstici je preklop (System / Light / Dark); izbira se shrani v `localStorage` (`gradnja-theme`), na `<html>` se doda/odstrani razred `dark` (class-based pristop).

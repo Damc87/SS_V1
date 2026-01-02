@@ -21,7 +21,7 @@ ipcMain.handle('subphases:update', (_e, id, name) => db.updateSubphase(id, name)
 ipcMain.handle('subphases:delete', (_e, id) => db.deleteSubphase(id));
 ipcMain.handle('subphases:list', (_e, phaseId) => db.listSubphases(phaseId));
 
-ipcMain.handle('contractors:list', () => db.listContractors());
+ipcMain.handle('contractors:list', (_e, filters) => db.listContractors(filters?.projectId));
 ipcMain.handle('contractors:create', (_e, data) => db.createContractor(data));
 ipcMain.handle('contractors:update', (_e, id, data) => db.updateContractor(id, data));
 ipcMain.handle('contractors:delete', (_e, id) => db.deleteContractor(id));

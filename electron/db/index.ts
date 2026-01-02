@@ -120,6 +120,7 @@ class JsonDatabase {
     this.state.contractors = this.state.contractors.map((c) => ({
       ...c,
       created_at: c.created_at ?? new Date().toISOString(),
+      phase_id: (c as any).phase_id ?? '',
     }));
 
     this.state.costs = this.state.costs.map((c) => {
@@ -150,7 +151,16 @@ class JsonDatabase {
   private async persist() {
     await ensureDataDirectories();
     const filePath = getDataFilePath();
-    await fsPromises.writeFile(filePath, JSON.stringify(this.state, null, 2), 'utf-8');
+    const tempPath = `${filePath}.tmp`;
+    try {
+      await fsPromises.writeFile(tempPath, JSON.stringify(this.state, null, 2), 'utf-8');
+      await fsPromises.rename(tempPath, filePath);
+    } catch (error) {
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath);
+      }
+      throw new Error((error as Error)?.message ?? 'Shranjevanje podatkov ni uspelo');
+    }
   }
 
   private async withLock<T>(fn: () => Promise<T>): Promise<T> {
@@ -332,14 +342,26 @@ class JsonDatabase {
     });
   }
 
-  async listContractors() {
+  async listContractors(projectId?: string) {
     await this.init();
-    return [...this.state!.contractors].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+    let contractors = [...this.state!.contractors];
+    if (projectId) {
+      contractors = contractors.filter((c) => !c.project_id || c.project_id === projectId);
+    }
+    return contractors.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
   }
 
   async createContractor(data: Omit<Contractor, 'id' | 'created_at'>) {
     await this.init();
     return this.withLock(async () => {
+      if (!data.project_id) throw new Error('Projekt je obvezen');
+      if (!data.phase_id) throw new Error('Faza je obvezna');
+      const duplicate = this.state!.contractors.find(
+        (c) => (c.project_id ?? '') === (data.project_id ?? '') && (c.name?.toLowerCase() ?? '') === (data.name?.toLowerCase() ?? '')
+      );
+      if (duplicate) {
+        throw new Error('Izvajalec s tem nazivom že obstaja v projektu.');
+      }
       const contractor: Contractor = { id: uuidv4(), created_at: new Date().toISOString(), ...data };
       this.state!.contractors.push(contractor);
       await this.persist();
@@ -352,9 +374,21 @@ class JsonDatabase {
     return this.withLock(async () => {
       const idx = this.state!.contractors.findIndex((c) => c.id === id);
       if (idx === -1) return null;
-      this.state!.contractors[idx] = { ...this.state!.contractors[idx], ...data };
+      const next = { ...this.state!.contractors[idx], ...data };
+      if (!next.project_id) throw new Error('Projekt je obvezen');
+      if (!next.phase_id) throw new Error('Faza je obvezna');
+      const duplicate = this.state!.contractors.find(
+        (c) =>
+          c.id !== id &&
+          (c.project_id ?? '') === (next.project_id ?? '') &&
+          (c.name?.toLowerCase() ?? '') === (next.name?.toLowerCase() ?? '')
+      );
+      if (duplicate) {
+        throw new Error('Izvajalec s tem nazivom že obstaja v projektu.');
+      }
+      this.state!.contractors[idx] = next;
       await this.persist();
-      return this.state!.contractors[idx];
+      return next;
     });
   }
 
