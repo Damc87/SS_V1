@@ -3,7 +3,29 @@ import { promises as fsPromises } from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { ensureDataDirectories, getDataFilePath, getUploadsPath, getDataRoot } from '../utils/paths';
-import type { Contractor, Cost, Document, Phase, Project, Subphase } from '../types/models';
+import type { Contractor, Cost, CostInput, Document, PaymentStatus, Phase, Project, Subphase } from '../types/models';
+
+type CostFilters = Partial<{
+  projectId: string;
+  dateFrom: string;
+  dateTo: string;
+  phaseId: string;
+  contractorId: string;
+  status: string;
+  paymentStatus: PaymentStatus;
+  category: string;
+  search: string;
+}>;
+
+type CostSort = {
+  field: 'date' | 'amount_net' | 'amount_gross' | 'phase' | 'contractor';
+  direction: 'asc' | 'desc';
+};
+
+type CostListResult = {
+  items: Cost[];
+  total: number;
+};
 
 type DataState = {
   projects: Project[];
@@ -32,6 +54,24 @@ const defaultPhases = [
   { name: 'Zunanja ureditev', subs: ['Dovoz', 'Ograja'] },
 ];
 
+const normalizeVat = (vat?: number) => {
+  if (vat === undefined || vat === null || Number.isNaN(Number(vat))) return 0;
+  return Number(vat);
+};
+
+const mapLegacyStatus = (status?: string): PaymentStatus => {
+  if (status === 'placano' || status === 'paid') return 'paid';
+  if (status === 'delno' || status === 'partial') return 'partial';
+  return 'unpaid';
+};
+
+const calculateAmounts = (qty: number, unitPrice: number, vatRate?: number) => {
+  const amount_net = qty * unitPrice;
+  const normalizedVat = normalizeVat(vatRate);
+  const amount_gross = amount_net * (1 + normalizedVat / 100);
+  return { amount_net, amount_gross, vat_rate: normalizedVat };
+};
+
 class JsonDatabase {
   private state: DataState | null = null;
   private mutex = Promise.resolve();
@@ -47,6 +87,7 @@ class JsonDatabase {
       this.state = this.createEmptyState();
       await this.persist();
     }
+    this.normalizeState();
     await this.seedPhases();
   }
 
@@ -60,6 +101,50 @@ class JsonDatabase {
       documents: [],
       meta: { activeProjectId: null },
     };
+  }
+
+  private normalizeState() {
+    if (!this.state) return;
+
+    this.state.projects = this.state.projects.map((p) => ({
+      ...p,
+      created_at: p.created_at ?? new Date().toISOString(),
+    }));
+
+    this.state.phases = this.state.phases.map((p, idx) => ({
+      ...p,
+      order_no: p.order_no ?? idx + 1,
+      budget_planned: Number((p as any).budget_planned ?? 0),
+    }));
+
+    this.state.contractors = this.state.contractors.map((c) => ({
+      ...c,
+      created_at: c.created_at ?? new Date().toISOString(),
+    }));
+
+    this.state.costs = this.state.costs.map((c) => {
+      const qty = Number((c as any).qty ?? 1);
+      const unit_price = Number((c as any).unit_price ?? c.amount_net ?? 0);
+      const { amount_net, amount_gross, vat_rate } = calculateAmounts(qty, unit_price, (c as any).vat_rate ?? c.vat_rate);
+      const description = (c as any).description ?? (c as any).title ?? '';
+      const payment_status = mapLegacyStatus((c as any).payment_status ?? (c as any).status);
+      const created_at = c.created_at ?? new Date().toISOString();
+      return {
+        ...c,
+        phase_id: (c as any).phase_id ?? '',
+        contractor_id: (c as any).contractor_id ?? '',
+        qty,
+        unit_price,
+        vat_rate,
+        unit: (c as any).unit ?? 'kos',
+        description,
+        payment_status,
+        amount_net: c.amount_net ?? amount_net,
+        amount_gross: c.amount_gross ?? amount_gross,
+        created_at,
+        updated_at: (c as any).updated_at ?? created_at,
+      };
+    });
   }
 
   private async persist() {
@@ -89,7 +174,7 @@ class JsonDatabase {
     const subphases: Subphase[] = [];
     defaultPhases.forEach((phase, idx) => {
       const phaseId = uuidv4();
-      phases.push({ id: phaseId, name: phase.name, order_no: idx + 1 });
+      phases.push({ id: phaseId, name: phase.name, order_no: idx + 1, budget_planned: 0 });
       phase.subs.forEach((sub, subIdx) => {
         subphases.push({ id: uuidv4(), phase_id: phaseId, name: sub, order_no: subIdx + 1 });
       });
@@ -166,19 +251,26 @@ class JsonDatabase {
     await this.init();
     return this.withLock(async () => {
       const order_no = (this.state!.phases.reduce((max, p) => Math.max(max, p.order_no), 0) || 0) + 1;
-      const phase: Phase = { id: uuidv4(), name, order_no };
+      const phase: Phase = { id: uuidv4(), name, order_no, budget_planned: 0 };
       this.state!.phases.push(phase);
       await this.persist();
       return phase;
     });
   }
 
-  async updatePhase(id: string, name: string) {
+  async updatePhase(id: string, payload: string | { name?: string; budget_planned?: number }) {
     await this.init();
     return this.withLock(async () => {
       const phase = this.state!.phases.find((p) => p.id === id);
       if (!phase) return null;
-      phase.name = name;
+      if (typeof payload === 'string') {
+        phase.name = payload;
+      } else {
+        phase.name = payload.name ?? phase.name;
+        if (payload.budget_planned !== undefined) {
+          phase.budget_planned = Number(payload.budget_planned);
+        }
+      }
       await this.persist();
       return phase;
     });
@@ -274,41 +366,156 @@ class JsonDatabase {
     });
   }
 
-  async listCosts(filters: Partial<{ projectId: string; dateFrom: string; dateTo: string; phaseId: string; contractorId: string; status: string; category: string; search: string }>) {
+  async listCosts(params: CostFilters & { sort?: CostSort; page?: number; pageSize?: number } = {}): Promise<CostListResult> {
     await this.init();
-    return this.state!.costs
-      .filter((c) => {
-        if (filters.projectId && c.project_id !== filters.projectId) return false;
-        if (filters.dateFrom && c.date < filters.dateFrom) return false;
-        if (filters.dateTo && c.date > filters.dateTo) return false;
-        if (filters.phaseId && c.phase_id !== filters.phaseId) return false;
-        if (filters.contractorId && c.contractor_id !== filters.contractorId) return false;
-        if (filters.status && c.status !== filters.status) return false;
-        if (filters.category && c.category !== filters.category) return false;
-        if (filters.search && !(c.title.includes(filters.search) || (c.invoice_no ?? '').includes(filters.search))) return false;
-        return true;
-      })
-      .sort((a, b) => (a.date < b.date ? 1 : -1));
+    const { sort, page, pageSize, ...filters } = params;
+    let costs = [...this.state!.costs];
+
+    costs = costs.filter((c) => {
+      if (filters.projectId && c.project_id !== filters.projectId) return false;
+      if (filters.dateFrom && c.date < filters.dateFrom) return false;
+      if (filters.dateTo && c.date > filters.dateTo) return false;
+      if (filters.phaseId && c.phase_id !== filters.phaseId) return false;
+      if (filters.contractorId && c.contractor_id !== filters.contractorId) return false;
+      if (filters.status && c.payment_status !== mapLegacyStatus(filters.status)) return false;
+      if (filters.paymentStatus && c.payment_status !== filters.paymentStatus) return false;
+      if (filters.category && c.category !== filters.category) return false;
+      if (filters.search) {
+        const haystack = `${c.description ?? ''} ${c.title ?? ''} ${c.invoice_no ?? ''}`.toLowerCase();
+        if (!haystack.includes(filters.search.toLowerCase())) return false;
+      }
+      return true;
+    });
+
+    const sorting = sort ?? { field: 'date', direction: 'desc' };
+    costs.sort((a, b) => {
+      const dir = sorting.direction === 'asc' ? 1 : -1;
+      switch (sorting.field) {
+        case 'amount_net':
+          return (a.amount_net - b.amount_net) * dir;
+        case 'amount_gross':
+          return (a.amount_gross - b.amount_gross) * dir;
+        case 'phase': {
+          const phaseA = this.state!.phases.find((p) => p.id === a.phase_id)?.name ?? '';
+          const phaseB = this.state!.phases.find((p) => p.id === b.phase_id)?.name ?? '';
+          return phaseA.localeCompare(phaseB) * dir;
+        }
+        case 'contractor': {
+          const cA = this.state!.contractors.find((c) => c.id === a.contractor_id)?.name ?? '';
+          const cB = this.state!.contractors.find((c) => c.id === b.contractor_id)?.name ?? '';
+          return cA.localeCompare(cB) * dir;
+        }
+        case 'date':
+        default:
+          return (a.date > b.date ? 1 : -1) * dir;
+      }
+    });
+
+    const total = costs.length;
+    if (pageSize) {
+      const start = ((page ?? 1) - 1) * pageSize;
+      costs = costs.slice(start, start + pageSize);
+    }
+
+    return { items: costs, total };
   }
 
-  async createCost(data: Omit<Cost, 'id' | 'created_at'>) {
+  private assertRelations(data: Partial<CostInput>) {
+    if (!this.state) return;
+    if (data.project_id) {
+      const hasProject = this.state.projects.some((p) => p.id === data.project_id);
+      if (!hasProject) throw new Error('Projekt ne obstaja');
+    }
+    if (data.phase_id) {
+      const hasPhase = this.state.phases.some((p) => p.id === data.phase_id);
+      if (!hasPhase) throw new Error('Faza ne obstaja');
+    }
+    if (data.contractor_id) {
+      const hasContractor = this.state.contractors.some((c) => c.id === data.contractor_id);
+      if (!hasContractor) throw new Error('Izvajalec ne obstaja');
+    }
+  }
+
+  async createCost(data: CostInput) {
     await this.init();
     return this.withLock(async () => {
-      const cost: Cost = { id: uuidv4(), created_at: new Date().toISOString(), ...data };
+      if (!data.project_id) throw new Error('Projekt je obvezen');
+      if (!data.phase_id || !data.contractor_id) throw new Error('Faza in izvajalec sta obvezna');
+      this.assertRelations(data);
+      const timestamp = new Date().toISOString();
+      const qty = Number(data.qty ?? 1);
+      const unit_price = Number(data.unit_price ?? data.amount_net ?? 0);
+      const { amount_net, amount_gross, vat_rate } = calculateAmounts(qty, unit_price, data.vat_rate);
+      const description = data.description ?? data.title ?? '';
+      const cost: Cost = {
+        id: uuidv4(),
+        project_id: data.project_id,
+        date: data.date ?? timestamp.slice(0, 10),
+        phase_id: data.phase_id,
+        subphase_id: data.subphase_id,
+        contractor_id: data.contractor_id,
+        description,
+        title: data.title ?? description,
+        category: data.category,
+        qty,
+        unit: data.unit ?? '',
+        unit_price,
+        vat_rate,
+        amount_net: data.amount_net ?? amount_net,
+        amount_gross: data.amount_gross ?? amount_gross,
+        payment_status: data.payment_status ?? 'unpaid',
+        invoice_no: data.invoice_no,
+        invoice_date: data.invoice_date,
+        due_date: data.due_date,
+        note: data.note ?? data.notes,
+        notes: data.notes ?? data.note,
+        payment_status_history: data.payment_status ? [data.payment_status] : [],
+        created_at: timestamp,
+        updated_at: timestamp,
+      };
       this.state!.costs.push(cost);
       await this.persist();
       return cost;
     });
   }
 
-  async updateCost(id: string, data: Partial<Omit<Cost, 'id' | 'created_at' | 'project_id'>>) {
+  async updateCost(id: string, data: Partial<CostInput>) {
     await this.init();
     return this.withLock(async () => {
       const idx = this.state!.costs.findIndex((c) => c.id === id);
       if (idx === -1) return null;
-      this.state!.costs[idx] = { ...this.state!.costs[idx], ...data };
+      this.assertRelations(data);
+
+      const existing = this.state!.costs[idx];
+      const phase_id = data.phase_id ?? existing.phase_id;
+      const contractor_id = data.contractor_id ?? existing.contractor_id;
+      if (!phase_id || !contractor_id) throw new Error('Faza in izvajalec sta obvezna');
+      const qty = Number(data.qty ?? existing.qty);
+      const unit_price = Number(data.unit_price ?? existing.unit_price);
+      const { amount_net, amount_gross, vat_rate } = calculateAmounts(qty, unit_price, data.vat_rate ?? existing.vat_rate);
+      const nextStatusHistory = data.payment_status ? [...(existing.payment_status_history ?? []), data.payment_status] : existing.payment_status_history;
+
+      const updated: Cost = {
+        ...existing,
+        ...data,
+        phase_id,
+        contractor_id,
+        qty,
+        unit_price,
+        vat_rate,
+        amount_net: data.amount_net ?? amount_net,
+        amount_gross: data.amount_gross ?? amount_gross,
+        payment_status: data.payment_status ?? existing.payment_status,
+        payment_status_history: nextStatusHistory,
+        description: data.description ?? data.title ?? existing.description ?? existing.title ?? '',
+        title: data.title ?? existing.title,
+        notes: data.notes ?? existing.notes,
+        note: data.note ?? data.notes ?? existing.note,
+        updated_at: new Date().toISOString(),
+      };
+      this.state!.costs[idx] = updated;
       await this.persist();
-      return this.state!.costs[idx];
+      return updated;
     });
   }
 
@@ -318,6 +525,71 @@ class JsonDatabase {
       this.state!.costs = this.state!.costs.filter((c) => c.id !== id);
       await this.persist();
     });
+  }
+
+  async duplicateCost(id: string) {
+    await this.init();
+    return this.withLock(async () => {
+      const existing = this.state!.costs.find((c) => c.id === id);
+      if (!existing) return null;
+      const timestamp = new Date().toISOString();
+      const copy: Cost = {
+        ...existing,
+        id: uuidv4(),
+        created_at: timestamp,
+        updated_at: timestamp,
+      };
+      this.state!.costs.push(copy);
+      await this.persist();
+      return copy;
+    });
+  }
+
+  async bulkCreateCosts(entries: CostInput[]) {
+    await this.init();
+    const created: Cost[] = [];
+    await this.withLock(async () => {
+      for (const entry of entries) {
+        if (!entry.project_id) throw new Error('Projekt je obvezen');
+        if (!entry.phase_id || !entry.contractor_id) throw new Error('Faza in izvajalec sta obvezna');
+        this.assertRelations(entry);
+        const timestamp = new Date().toISOString();
+        const qty = Number(entry.qty ?? 1);
+        const unit_price = Number(entry.unit_price ?? entry.amount_net ?? 0);
+        const { amount_net, amount_gross, vat_rate } = calculateAmounts(qty, unit_price, entry.vat_rate);
+        const description = entry.description ?? entry.title ?? '';
+        const cost: Cost = {
+          id: uuidv4(),
+          project_id: entry.project_id,
+          date: entry.date ?? timestamp.slice(0, 10),
+          phase_id: entry.phase_id,
+          subphase_id: entry.subphase_id,
+          contractor_id: entry.contractor_id,
+          description,
+          title: entry.title ?? description,
+          category: entry.category,
+          qty,
+          unit: entry.unit ?? '',
+          unit_price,
+          vat_rate,
+          amount_net: entry.amount_net ?? amount_net,
+          amount_gross: entry.amount_gross ?? amount_gross,
+          payment_status: entry.payment_status ?? 'unpaid',
+          invoice_no: entry.invoice_no,
+          invoice_date: entry.invoice_date,
+          due_date: entry.due_date,
+          note: entry.note ?? entry.notes,
+          notes: entry.notes ?? entry.note,
+          payment_status_history: entry.payment_status ? [entry.payment_status] : [],
+          created_at: timestamp,
+          updated_at: timestamp,
+        };
+        created.push(cost);
+        this.state!.costs.push(cost);
+      }
+      await this.persist();
+    });
+    return created;
   }
 
   async attachDocument(doc: Omit<Document, 'id' | 'created_at'>) {
@@ -347,64 +619,89 @@ class JsonDatabase {
     });
   }
 
-  async exportCostsCsv(projectId?: string) {
+  async exportCostsCsv(projectId?: string, filters: CostFilters = {}) {
     await this.init();
-    const costs = await this.listCosts({ projectId });
-    const header = [
-      'id',
-      'project_id',
-      'date',
-      'phase_id',
-      'subphase_id',
-      'contractor_id',
-      'title',
-      'category',
-      'amount_net',
-      'vat_rate',
-      'amount_gross',
-      'status',
-      'invoice_no',
-      'invoice_date',
-      'due_date',
-      'notes',
-      'created_at',
-    ];
+    const { items } = await this.listCosts({ ...filters, projectId });
+    const header = ['date', 'phase', 'contractor', 'description', 'qty', 'unit', 'unitPrice', 'vatRate', 'amountNet', 'amountGross', 'status', 'invoiceNo', 'note'];
     const lines = [header.join(',')];
-    costs.forEach((c) => {
-      const row = header.map((key) => {
-        const value = (c as Record<string, unknown>)[key];
-        if (value === undefined || value === null) return '';
-        if (typeof value === 'string') return `"${value.replace(/"/g, '""')}"`;
-        return value;
-      });
+    const formatValue = (value: unknown) => {
+      if (value === undefined || value === null) return '';
+      if (typeof value === 'string') return `"${value.replace(/"/g, '""')}"`;
+      return value;
+    };
+
+    items.forEach((c) => {
+      const phaseName = this.state!.phases.find((p) => p.id === c.phase_id)?.name ?? '';
+      const contractorName = this.state!.contractors.find((ctr) => ctr.id === c.contractor_id)?.name ?? '';
+      const row = [
+        c.date,
+        phaseName,
+        contractorName,
+        c.description?.replace(/"/g, '""') ?? '',
+        c.qty,
+        c.unit ?? '',
+        c.unit_price,
+        c.vat_rate ?? 0,
+        c.amount_net,
+        c.amount_gross,
+        c.payment_status,
+        c.invoice_no ?? '',
+        c.note ?? c.notes ?? '',
+      ].map((v) => formatValue(v));
       lines.push(row.join(','));
     });
     return lines.join('\n');
   }
 
-  async importCostsCsv(csv: string) {
+  async importCostsCsv(csv: string, projectId: string) {
     await this.init();
     const [headerLine, ...rows] = csv.split(/\r?\n/).filter(Boolean);
-    const headers = headerLine.split(',');
+    const headers = headerLine.split(',').map((h) => h.trim());
     const imported: Cost[] = [];
-    await this.withLock(async () => {
-      rows.forEach((line) => {
-        const values = line.split(',').map((v) => v.replace(/^"|"$/g, ''));
-        const entry: Record<string, unknown> = {};
-        headers.forEach((h, idx) => {
-          entry[h] = values[idx];
-        });
-        entry.amount_net = Number(entry.amount_net);
-        entry.amount_gross = Number(entry.amount_gross);
-        entry.vat_rate = Number(entry.vat_rate);
-        if (!entry.id) entry.id = uuidv4();
-        if (!entry.created_at) entry.created_at = new Date().toISOString();
-        this.state!.costs.push(entry as Cost);
-        imported.push(entry as Cost);
+    const pending: CostInput[] = [];
+    const missingPhases = new Set<string>();
+    const missingContractors = new Set<string>();
+
+    rows.forEach((line) => {
+      const values = line.split(',').map((v) => v.replace(/^"|"$/g, '').trim());
+      const entry: Record<string, string> = {};
+      headers.forEach((h, idx) => {
+        entry[h] = values[idx];
       });
-      await this.persist();
+      const phaseName = entry.phase?.toLowerCase();
+      const contractorName = entry.contractor?.toLowerCase();
+      const phase = this.state!.phases.find((p) => p.name.toLowerCase() === phaseName);
+      const contractor = this.state!.contractors.find((c) => c.name.toLowerCase() === contractorName);
+      if (!phase) missingPhases.add(entry.phase || 'Neznana faza');
+      if (!contractor) missingContractors.add(entry.contractor || 'Neznan izvajalec');
+      if (!phase || !contractor) return;
+
+      pending.push({
+        project_id: projectId,
+        date: entry.date,
+        phase_id: phase?.id ?? '',
+        contractor_id: contractor?.id ?? '',
+        description: entry.description ?? entry.title ?? '',
+        qty: Number(entry.qty ?? 1),
+        unit: entry.unit ?? '',
+        unit_price: Number(entry.unitPrice ?? entry.unit_price ?? 0),
+        vat_rate: Number(entry.vatRate ?? entry.vat_rate ?? 0),
+        amount_net: entry.amountNet ? Number(entry.amountNet) : undefined,
+        amount_gross: entry.amountGross ? Number(entry.amountGross) : undefined,
+        payment_status: mapLegacyStatus(entry.status),
+        invoice_no: entry.invoiceNo ?? '',
+        note: entry.note ?? entry.notes ?? '',
+      });
     });
-    return imported;
+
+    if (missingPhases.size || missingContractors.size) {
+      return { created: [], missingPhases: Array.from(missingPhases), missingContractors: Array.from(missingContractors) };
+    }
+
+    const created = await this.bulkCreateCosts(pending);
+    imported.push(...created);
+
+    return { created: imported, missingPhases: [], missingContractors: [] };
   }
 
   async exportBackup(targetPath: string) {
@@ -446,6 +743,17 @@ class JsonDatabase {
       await this.seedPhases();
       await this.persist();
     });
+  }
+
+  async phasePlanVsActual(projectId: string) {
+    await this.init();
+    const { items } = await this.listCosts({ projectId });
+    return this.state!.phases.map((p) => ({
+      phase_id: p.id,
+      phase_name: p.name,
+      planned: Number((p as any).budget_planned ?? 0),
+      actual: items.filter((c) => c.phase_id === p.id).reduce((acc, cost) => acc + cost.amount_gross, 0),
+    }));
   }
 
   async saveDocumentFile(sourcePath: string) {

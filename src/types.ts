@@ -11,11 +11,12 @@ export type Project = {
   created_at: string;
 };
 
-export type Phase = { id: string; name: string; order_no: number };
+export type Phase = { id: string; name: string; order_no: number; budget_planned?: number; project_id?: string };
 export type Subphase = { id: string; phase_id: string; name: string; order_no: number };
 export type Contractor = {
   id: string;
   name: string;
+  project_id?: string;
   tax_id?: string;
   phone?: string;
   email?: string;
@@ -23,24 +24,43 @@ export type Contractor = {
   created_at: string;
 };
 
+export type PaymentStatus = 'unpaid' | 'paid' | 'partial';
+
 export type Cost = {
   id: string;
   project_id: string;
   date: string;
-  phase_id?: string;
+  phase_id: string;
   subphase_id?: string;
-  contractor_id?: string;
-  title: string;
-  category: PhaseCategory;
+  contractor_id: string;
+  description: string;
+  title?: string;
+  category?: PhaseCategory;
+  qty: number;
+  unit: string;
+  unit_price: number;
   amount_net: number;
-  vat_rate: number;
+  vat_rate?: number;
   amount_gross: number;
-  status: CostStatus;
+  payment_status: PaymentStatus;
   invoice_no?: string;
   invoice_date?: string;
   due_date?: string;
+  note?: string;
   notes?: string;
+  payment_status_history?: PaymentStatus[];
   created_at: string;
+  updated_at: string;
+};
+
+export type CostInput = Omit<Cost, 'id' | 'created_at' | 'updated_at' | 'payment_status_history' | 'amount_net' | 'amount_gross'> & {
+  amount_net?: number;
+  amount_gross?: number;
+};
+
+export type CostListResult = {
+  items: Cost[];
+  total: number;
 };
 
 export type Document = {

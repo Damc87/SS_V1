@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcRendererEvent } from 'electron';
-import type { Cost, Contractor, Document, Phase, Project, Subphase } from './types/models';
+import type { Cost, Contractor, CostInput, CostListResult, Document, Phase, Project, Subphase } from './types/models';
 
 type Listener = (event: IpcRendererEvent, ...args: any[]) => void;
 
@@ -18,7 +18,7 @@ const api = {
   phases: {
     list: () => invoke<Phase[]>('phases:list'),
     create: (name: string) => invoke<Phase>('phases:create', name),
-    update: (id: string, name: string) => invoke<Phase | null>('phases:update', id, name),
+    update: (id: string, payload: string | { name?: string; budget_planned?: number }) => invoke<Phase | null>('phases:update', id, payload),
     remove: (id: string) => invoke<void>('phases:delete', id),
     reorder: (order: string[]) => invoke<Phase[]>('phases:reorder', order),
     subphases: {
@@ -35,10 +35,13 @@ const api = {
     remove: (id: string) => invoke<void>('contractors:delete', id),
   },
   costs: {
-    list: (filters: Record<string, unknown>) => invoke<Cost[]>('costs:list', filters),
-    create: (data: Omit<Cost, 'id' | 'created_at'>) => invoke<Cost>('costs:create', data),
-    update: (id: string, data: Partial<Omit<Cost, 'id' | 'created_at' | 'project_id'>>) => invoke<Cost | null>('costs:update', id, data),
+    list: (filters: Record<string, unknown>) => invoke<CostListResult>('costs:list', filters),
+    create: (data: CostInput) => invoke<Cost>('costs:create', data),
+    update: (id: string, data: Partial<CostInput>) => invoke<Cost | null>('costs:update', id, data),
     remove: (id: string) => invoke<void>('costs:delete', id),
+    duplicate: (id: string) => invoke<Cost | null>('costs:duplicate', id),
+    bulkCreate: (entries: CostInput[]) => invoke<Cost[]>('costs:bulkCreate', entries),
+    planVsActual: (projectId: string) => invoke<any>('costs:planVsActual', projectId),
   },
   documents: {
     attach: (payload: { projectId: string; costId?: string; filePath: string }) => invoke<Document>('documents:attach', payload),
@@ -47,11 +50,11 @@ const api = {
     remove: (id: string) => invoke<void>('documents:delete', id),
   },
   export: {
-    csv: (projectId?: string) => invoke<string>('export:csv', projectId),
+    csv: (projectId?: string, filters?: Record<string, unknown>) => invoke<string>('export:csv', projectId, filters),
     backup: () => invoke<string | null>('export:backup'),
   },
   import: {
-    csv: (csv: string) => invoke<any>('import:csv', csv),
+    csv: (csv: string, projectId: string) => invoke<any>('import:csv', csv, projectId),
     backup: () => invoke<boolean | null>('import:backup'),
   },
   paths: {

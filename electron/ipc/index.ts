@@ -30,6 +30,9 @@ ipcMain.handle('costs:list', (_e, filters) => db.listCosts(filters));
 ipcMain.handle('costs:create', (_e, data) => db.createCost(data));
 ipcMain.handle('costs:update', (_e, id, data) => db.updateCost(id, data));
 ipcMain.handle('costs:delete', (_e, id) => db.deleteCost(id));
+ipcMain.handle('costs:duplicate', (_e, id) => db.duplicateCost(id));
+ipcMain.handle('costs:bulkCreate', (_e, list) => db.bulkCreateCosts(list));
+ipcMain.handle('costs:planVsActual', (_e, projectId) => db.phasePlanVsActual(projectId));
 
 ipcMain.handle('documents:attach', async (_e, { projectId, costId, filePath }) => {
   const { storedName, targetPath, size } = await db.saveDocumentFile(filePath);
@@ -49,8 +52,8 @@ ipcMain.handle('documents:listByProject', (_e, projectId) => db.listDocuments(pr
 ipcMain.handle('documents:open', (_e, storedPath) => shell.openPath(storedPath));
 ipcMain.handle('documents:delete', (_e, id) => db.deleteDocument(id));
 
-ipcMain.handle('export:csv', (_e, projectId) => db.exportCostsCsv(projectId));
-ipcMain.handle('import:csv', (_e, csv) => db.importCostsCsv(csv));
+ipcMain.handle('export:csv', (_e, projectId, filters) => db.exportCostsCsv(projectId, filters));
+ipcMain.handle('import:csv', (_e, csv, projectId) => db.importCostsCsv(csv, projectId));
 
 ipcMain.handle('export:backup', async () => {
   const { filePath } = await dialog.showSaveDialog({
