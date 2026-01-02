@@ -19,7 +19,7 @@ export function ProjectsPanel() {
   };
 
   return (
-    <Card>
+    <Card className="glass">
       <CardHeader>
         <CardDescription>Projekti</CardDescription>
         <CardTitle>Upravljanje aktivnega projekta</CardTitle>
@@ -34,12 +34,15 @@ export function ProjectsPanel() {
         </Button>
         <div className="flex flex-wrap gap-2">
           {projects.map((p) => (
-            <span key={p.id} className="flex items-center gap-2 rounded-full bg-muted px-3 py-1 text-sm text-slate-700">
-              <ClipboardCheck className="h-4 w-4" />
+            <span
+              key={p.id}
+              className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-sm font-semibold text-foreground border border-primary/20"
+            >
+              <ClipboardCheck className="h-4 w-4 text-primary" />
               {p.name}
             </span>
           ))}
-          {!projects.length && <span className="text-sm text-slate-500">Ni projektov. Dodajte prvega.</span>}
+          {!projects.length && <span className="text-sm text-muted-foreground">Ni projektov. Dodajte prvega.</span>}
         </div>
       </CardContent>
     </Card>

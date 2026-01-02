@@ -12,11 +12,11 @@ type EmptyStateProps = {
 
 export function EmptyState({ title, description, icon, action, className }: EmptyStateProps) {
   return (
-    <Card className={cn('border-dashed border-slate-200 bg-white/80', className)}>
-      <CardContent className="flex flex-col items-center justify-center gap-3 text-center text-slate-600">
-        {icon && <div className="rounded-2xl bg-muted/80 p-3 text-slate-700 shadow-inner">{icon}</div>}
-        <div className="text-lg font-semibold text-slate-900">{title}</div>
-        {description && <p className="text-sm text-slate-500 max-w-md">{description}</p>}
+    <Card className={cn('border-dashed border-border/70 bg-surface/80', className)}>
+      <CardContent className="flex flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+        {icon && <div className="rounded-2xl bg-muted/80 p-3 text-foreground shadow-inner">{icon}</div>}
+        <div className="text-lg font-semibold text-foreground">{title}</div>
+        {description && <p className="text-sm text-muted-foreground max-w-md">{description}</p>}
         {action}
       </CardContent>
     </Card>

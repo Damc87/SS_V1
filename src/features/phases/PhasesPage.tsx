@@ -16,7 +16,7 @@ export function PhasesPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardDescription>Faze</CardDescription>
@@ -32,11 +32,14 @@ export function PhasesPage() {
           {!phases.length ? (
             <EmptyState title="Ni faz" description="Dodajte novo fazo, da lahko sledite stroškom." icon={<Flag className="h-5 w-5" />} />
           ) : (
-            <ul className="grid gap-2 md:grid-cols-2">
+            <ul className="grid gap-3 md:grid-cols-2">
               {phases.map((p) => (
-                <li key={p.id} className="flex items-center justify-between rounded-xl border border-border bg-white px-3 py-3 text-sm shadow-inner">
-                  <div className="font-medium text-slate-900">{p.name}</div>
-                  <span className="rounded-full bg-muted px-2 py-1 text-xs text-slate-500">Vrstni red: {p.order_no}</span>
+                <li
+                  key={p.id}
+                  className="flex items-center justify-between rounded-2xl border border-border bg-elevated/70 px-4 py-3 text-sm shadow-inner"
+                >
+                  <div className="font-semibold text-foreground">{p.name}</div>
+                  <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">Vrstni red: {p.order_no}</span>
                 </li>
               ))}
             </ul>

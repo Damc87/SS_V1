@@ -4,19 +4,19 @@ import { Button } from '../../components/ui/button';
 
 export function SettingsPage() {
   return (
-    <div className="space-y-4">
-      <Card>
+    <div className="space-y-6">
+      <Card className="glass">
         <CardHeader>
           <CardDescription>Nastavitve</CardDescription>
           <CardTitle>Valuta, DDV, backup</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm text-slate-700">
+        <CardContent className="space-y-3 text-sm text-muted-foreground">
           <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
-            <label className="w-32 text-slate-500">Valuta</label>
+            <label className="w-32 text-muted-foreground">Valuta</label>
             <Input className="sm:max-w-[160px]" defaultValue="EUR" />
           </div>
           <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
-            <label className="w-32 text-slate-500">Privzeti DDV</label>
+            <label className="w-32 text-muted-foreground">Privzeti DDV</label>
             <Input className="sm:max-w-[160px]" defaultValue="22" type="number" />
           </div>
           <div className="flex flex-wrap gap-2 pt-2">

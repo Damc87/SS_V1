@@ -23,21 +23,21 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <motion.aside
       animate={{ width: collapsed ? 80 : 260 }}
-      className="relative z-20 border-r border-border/80 bg-white/85 backdrop-blur shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)]"
+      className="relative z-20 border-r border-border/80 bg-surface/95 backdrop-blur-xl shadow-[0_20px_60px_-40px_rgba(15,23,42,0.45)]"
     >
       <div className="flex items-center justify-between gap-3 px-5 py-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-900 to-slate-700 text-white shadow-card">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-card">
             <Building2 className="h-5 w-5" />
           </div>
           {!collapsed && (
             <div>
-              <div className="text-sm font-semibold text-slate-900">Gradnja</div>
-              <div className="text-xs text-slate-500">Premium pregled</div>
+              <div className="text-sm font-semibold text-foreground">Gradnja</div>
+              <div className="text-xs text-muted-foreground">Premium pregled</div>
             </div>
           )}
         </div>
-        <Button variant="ghost" size="sm" className="h-9 w-9 rounded-full text-slate-500" onClick={onToggle}>
+        <Button variant="ghost" size="sm" className="h-9 w-9 rounded-full text-muted-foreground hover:bg-muted" onClick={onToggle}>
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </Button>
       </div>
@@ -48,8 +48,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             to={item.to}
             className={({ isActive }) =>
               cn(
-                'group flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-slate-600 transition hover:bg-muted',
-                isActive && 'bg-slate-900 text-white shadow-soft hover:bg-slate-900',
+                'group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted',
+                isActive &&
+                  'bg-primary/10 text-foreground shadow-soft border border-primary/20 hover:bg-primary/12 dark:bg-primary/15 dark:text-foreground',
                 collapsed && 'justify-center'
               )
             }
@@ -60,7 +61,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </NavLink>
         ))}
       </nav>
-      <div className="px-5 py-5 text-xs text-slate-400">{collapsed ? 'Lokalno' : 'Lokalni način'}</div>
+      <div className="px-5 py-5 text-xs text-muted-foreground/80">{collapsed ? 'Lokalno' : 'Lokalni način'}</div>
     </motion.aside>
   );
 }
