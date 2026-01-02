@@ -13,14 +13,18 @@ export type DataState = {
   documents: Document[];
   loading: boolean;
   error?: string | null;
+  refreshAll: () => Promise<void>;
   loadAll: () => Promise<void>;
   setActiveProject: (id: string) => Promise<void>;
   addProject: (payload: Pick<Project, 'name' | 'description'>) => Promise<Project>;
+  deleteProject: (id: string) => Promise<void>;
   refreshCosts: (filters?: { projectId?: string } & Record<string, unknown>) => Promise<void>;
   refreshContractors: (projectId?: string) => Promise<void>;
   createCost: (payload: CostInput) => Promise<Cost>;
   updateCost: (id: string, patch: Partial<CostInput>) => Promise<Cost | null>;
+  archiveCost: (id: string, archived: boolean) => Promise<Cost | null>;
   deleteCost: (id: string) => Promise<void>;
+  attachCostPdf: (id: string, filePath: string) => Promise<void>;
   duplicateCost: (id: string) => Promise<Cost | null>;
   importCosts: (csv: string, projectId: string) => Promise<unknown>;
   exportCosts: (projectId?: string, filters?: Record<string, unknown>) => Promise<string>;
@@ -36,6 +40,7 @@ export type DataState = {
   importPhasesCsv: (csv: string) => Promise<PhasesImportResult | null>;
   createContractor: (payload: Omit<Contractor, 'id' | 'created_at'>) => Promise<Contractor>;
   updateContractor: (id: string, patch: Partial<Omit<Contractor, 'id' | 'created_at'>>) => Promise<Contractor | null>;
+  archiveContractor: (id: string, archived: boolean) => Promise<Contractor | null>;
   deleteContractor: (id: string) => Promise<void>;
 };
 
@@ -50,6 +55,26 @@ export const useData = create<DataState>((set, get) => ({
   documents: [],
   loading: false,
   error: null,
+  async refreshAll() {
+    set({ loading: true });
+    try {
+      const activeProjectId = await window.api.projects.getActive();
+      const projectsRaw = await window.api.projects.list();
+      const projects = projectsRaw.filter((p) => !p.is_archived);
+      const contractors = await window.api.contractors.list({ projectId: activeProjectId ?? undefined, includeArchived: true });
+      set({ projects, contractors, activeProjectId: activeProjectId ?? null });
+      await get().refreshPhases();
+      const fallback = projects[0]?.id;
+      if (activeProjectId ?? fallback) {
+        await get().setActiveProject(activeProjectId ?? fallback);
+      }
+    } catch (error) {
+      console.error('refreshAll failed', error);
+      toast.error('Osvežitev ni uspela.');
+    } finally {
+      set({ loading: false });
+    }
+  },
   async refreshPhases() {
     try {
       const { activeProjectId } = get();
@@ -70,7 +95,13 @@ export const useData = create<DataState>((set, get) => ({
   loadAll: async () => {
     set({ loading: true, error: null });
     try {
-      const [projects, contractors, activeProjectId] = await Promise.all([window.api.projects.list(), window.api.contractors.list(), window.api.projects.getActive()]);
+      const [projectsRaw, contractorsRaw, activeProjectId] = await Promise.all([
+        window.api.projects.list(),
+        window.api.contractors.list({ includeArchived: true }),
+        window.api.projects.getActive(),
+      ]);
+      const projects = projectsRaw.filter((p) => !p.is_archived);
+      const contractors = contractorsRaw;
       await get().refreshPhases();
       set({ projects, contractors, activeProjectId: activeProjectId ?? null, loading: false });
 
@@ -88,9 +119,9 @@ export const useData = create<DataState>((set, get) => ({
     try {
       set({ activeProjectId: id });
       await window.api.projects.setActive(id);
-      const { items, total } = (await window.api.costs.list({ projectId: id })) as CostListResult;
+      const { items, total } = (await window.api.costs.list({ projectId: id, includeArchived: true })) as CostListResult;
       const documents = await window.api.documents.listByProject(id);
-      const contractors = await window.api.contractors.list({ projectId: id });
+      const contractors = await window.api.contractors.list({ projectId: id, includeArchived: true });
       set({ activeProjectId: id, costs: items, costTotal: total, documents, contractors, error: null });
       await get().refreshPhases();
     } catch (error) {
@@ -103,7 +134,7 @@ export const useData = create<DataState>((set, get) => ({
     const current = projectId ?? get().activeProjectId;
     if (!current) return;
     try {
-      const contractors = await window.api.contractors.list({ projectId: current });
+      const contractors = await window.api.contractors.list({ projectId: current, includeArchived: true });
       set({ contractors });
     } catch (error) {
       console.error('refreshContractors failed', error);
@@ -121,11 +152,21 @@ export const useData = create<DataState>((set, get) => ({
       throw error;
     }
   },
+  deleteProject: async (id: string) => {
+    try {
+      await window.api.projects.remove(id);
+      await get().loadAll();
+    } catch (error) {
+      console.error('deleteProject failed', error);
+      toast.error('Brisanje projekta ni uspelo.');
+      throw error;
+    }
+  },
   refreshCosts: async (filters = {}) => {
     const { projectId = get().activeProjectId, ...rest } = filters;
     if (!projectId) return;
     try {
-      const { items, total } = (await window.api.costs.list({ ...rest, projectId })) as CostListResult;
+      const { items, total } = (await window.api.costs.list({ includeArchived: true, ...rest, projectId })) as CostListResult;
       set({ costs: items, costTotal: total });
     } catch (error) {
       console.error('refreshCosts failed', error);
@@ -157,6 +198,19 @@ export const useData = create<DataState>((set, get) => ({
       throw error;
     }
   },
+  archiveCost: async (id, archived) => {
+    try {
+      const updated = await window.api.costs.setArchived(id, archived);
+      if (updated) {
+        set((state) => ({ costs: state.costs.map((c) => (c.id === id ? updated : c)) }));
+      }
+      return updated;
+    } catch (error) {
+      console.error('archiveCost failed', error);
+      toast.error('Sprememba arhiva stroška ni uspela.');
+      throw error;
+    }
+  },
   deleteCost: async (id) => {
     try {
       await window.api.costs.remove(id);
@@ -164,6 +218,18 @@ export const useData = create<DataState>((set, get) => ({
     } catch (error) {
       console.error('deleteCost failed', error);
       toast.error('Brisanje stroška ni uspelo.');
+      throw error;
+    }
+  },
+  attachCostPdf: async (id, filePath) => {
+    try {
+      const meta = await window.api.costs.attachPdf(id, filePath);
+      if (meta) {
+        set((state) => ({ costs: state.costs.map((c) => (c.id === id ? { ...c, pdf_attachment: meta } : c)) }));
+      }
+    } catch (error) {
+      console.error('attachCostPdf failed', error);
+      toast.error('Nalaganje PDF ni uspelo.');
       throw error;
     }
   },
@@ -320,6 +386,21 @@ export const useData = create<DataState>((set, get) => ({
     } catch (error) {
       console.error('updateContractor failed', error);
       toast.error('Posodobitev izvajalca ni uspela.');
+      throw error;
+    }
+  },
+  archiveContractor: async (id, archived) => {
+    try {
+      const contractor = await window.api.contractors.archive(id, archived);
+      if (contractor) {
+        set((state) => ({
+          contractors: state.contractors.map((c) => (c.id === id ? contractor : c)),
+        }));
+      }
+      return contractor;
+    } catch (error) {
+      console.error('archiveContractor failed', error);
+      toast.error('Posodobitev arhiva izvajalca ni uspela.');
       throw error;
     }
   },

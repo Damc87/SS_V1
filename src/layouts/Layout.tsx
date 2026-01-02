@@ -29,13 +29,17 @@ export const AppLayout = () => {
     initialize();
   }, [initialize]);
 
-  useEffect(() => {
-    window.localStorage.setItem('sidebar-collapsed', collapsed.toString());
-  }, [collapsed]);
+  const handleToggle = () => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      window.localStorage.setItem('sidebar-collapsed', next.toString());
+      return next;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground flex">
-      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((prev) => !prev)} />
+      <Sidebar collapsed={collapsed} onToggle={handleToggle} />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar />
         <div className="flex-1 overflow-auto">

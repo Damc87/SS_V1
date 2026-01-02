@@ -9,7 +9,7 @@ export function TopContractorsChart() {
     const decorated = contractors
       .map((c) => ({
         name: c.name,
-        value: costs.filter((cost) => cost.contractor_id === c.id).reduce((acc, cost) => acc + cost.amount_gross, 0),
+        value: costs.filter((cost) => !cost.is_archived && cost.contractor_id === c.id).reduce((acc, cost) => acc + cost.amount_gross, 0),
       }))
       .filter((d) => d.value > 0)
       .sort((a, b) => b.value - a.value)
@@ -32,19 +32,19 @@ export function TopContractorsChart() {
     <div className="h-64">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical">
-          <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" opacity={0.4} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" opacity={0.28} horizontal={false} />
           <XAxis type="number" hide />
           <YAxis dataKey="name" type="category" width={140} axisLine={false} tickLine={false} stroke="rgb(var(--text2))" />
           <Tooltip
             contentStyle={{
-              background: 'rgb(var(--surface))',
+              background: 'rgba(var(--surface),0.95)',
               border: `1px solid rgb(var(--border))`,
               borderRadius: 16,
               boxShadow: 'var(--shadow)',
             }}
             cursor={{ fill: 'rgb(var(--muted))', opacity: 0.28 }}
           />
-          <Bar dataKey="value" fill="rgb(var(--accent))" radius={[12, 12, 12, 12]} />
+          <Bar dataKey="value" fill="rgba(var(--accent),0.72)" radius={[14, 14, 10, 10]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

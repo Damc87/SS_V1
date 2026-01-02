@@ -1,6 +1,3 @@
-export type PhaseCategory = 'material' | 'delo' | 'stroj' | 'prevoz' | 'ostalo';
-export type CostStatus = 'planirano' | 'potrjeno' | 'placano';
-
 export type Project = {
   id: string;
   name: string;
@@ -9,6 +6,8 @@ export type Project = {
   gross_m2?: number;
   volume_m3?: number;
   created_at: string;
+  updated_at?: string;
+  is_archived?: boolean;
 };
 
 export type MainPhase = { id: string; name: string; order_no: number; budget_planned?: number; project_id?: string };
@@ -18,49 +17,34 @@ export type Contractor = {
   id: string;
   name: string;
   project_id?: string;
-  phase_id?: string;
-  tax_id?: string;
-  phone?: string;
-  email?: string;
-  address?: string;
+  subphase_ids: string[];
   created_at: string;
+  updated_at?: string;
+  is_archived?: boolean;
 };
-
-export type PaymentStatus = 'unpaid' | 'paid' | 'partial';
 
 export type Cost = {
   id: string;
   project_id: string;
-  date: string;
   phase_id: string;
   subphase_id: string;
   contractor_id: string;
   description: string;
-  title?: string;
-  category?: PhaseCategory;
-  qty: number;
-  unit: string;
-  unit_price: number;
-  amount_net: number;
-  vat_rate?: number;
   amount_gross: number;
-  payment_status: PaymentStatus;
+  invoice_date: string;
+  invoice_month: string;
   invoice_no?: string;
-  invoice_date?: string;
-  due_date?: string;
-  note?: string;
-  notes?: string;
-  payment_status_history?: PaymentStatus[];
+  pdf_attachment?: {
+    file_name: string;
+    stored_path: string;
+    original_name: string;
+  };
+  is_archived: boolean;
   created_at: string;
   updated_at: string;
 };
 
-export type CostInput = Omit<Cost, 'id' | 'created_at' | 'updated_at' | 'payment_status_history' | 'amount_net' | 'amount_gross' | 'phase_id' | 'subphase_id'> & {
-  phase_id?: string;
-  subphase_id?: string;
-  amount_net?: number;
-  amount_gross?: number;
-};
+export type CostInput = Omit<Cost, 'id' | 'created_at' | 'updated_at' | 'phase_id'> & { phase_id?: string };
 
 export type CostListResult = {
   items: Cost[];

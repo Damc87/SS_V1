@@ -32,10 +32,11 @@ const api = {
     },
   },
   contractors: {
-    list: (filters?: { projectId?: string }) => invoke<Contractor[]>('contractors:list', filters),
+    list: (filters?: { projectId?: string; includeArchived?: boolean }) => invoke<Contractor[]>('contractors:list', filters),
     create: (data: Omit<Contractor, 'id' | 'created_at'>) => invoke<Contractor>('contractors:create', data),
     update: (id: string, data: Partial<Omit<Contractor, 'id' | 'created_at'>>) => invoke<Contractor | null>('contractors:update', id, data),
     remove: (id: string) => invoke<void>('contractors:delete', id),
+    archive: (id: string, archived: boolean) => invoke<Contractor | null>('contractors:archive', id, archived),
   },
   costs: {
     list: (filters: Record<string, unknown>) => invoke<CostListResult>('costs:list', filters),
@@ -45,6 +46,9 @@ const api = {
     duplicate: (id: string) => invoke<Cost | null>('costs:duplicate', id),
     bulkCreate: (entries: CostInput[]) => invoke<Cost[]>('costs:bulkCreate', entries),
     planVsActual: (projectId: string) => invoke<any>('costs:planVsActual', projectId),
+    setArchived: (id: string, archived: boolean) => invoke<Cost | null>('costs:setArchived', id, archived),
+    attachPdf: (costId: string, filePath: string) => invoke<any>('costs:attachPdf', costId, filePath),
+    openPdf: (storedPath: string) => invoke<string>('costs:openPdf', storedPath),
   },
   documents: {
     attach: (payload: { projectId: string; costId?: string; filePath: string }) => invoke<Document>('documents:attach', payload),

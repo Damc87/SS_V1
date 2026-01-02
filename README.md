@@ -35,6 +35,11 @@ Offline-first namizna aplikacija za spremljanje stroškov gradnje. Grajena z Ele
 - Stroške dodate na strani **Stroški** (`/stroski`); izberete fazo in izvajalca, vnesete opis ter ceno, zapis pa lahko kasneje uredite ali izbrišete.
 - Na strani **Faze** lahko celoten šifrant uvozite iz CSV prek gumba **Uvoz CSV**. Pričakovana glava je `glavna_faza_id;glavna_faza_naziv;podfaza_id;podfaza_naziv;zaporedje`. Ob uvozu se glavne faze updat-ajo ali ustvarijo po `glavna_faza_id`, podfaze se vežejo na pripadajočo glavno fazo, duplikati (id + naziv) se preskočijo, ob napaki pa se prikaže jasen opis težave.
 
+### Hiter vodič za stroške
+- **Dodaj strošek:** na desnem panelu strani *Stroški* izberi glavno fazo in podfazo, izvajalca ter obvezna polja (znesek, datum). Klikni **Dodaj strošek**.
+- **PDF račun:** v istem panelu ali pri inline urejanju priloži en (1) PDF prek gumba *Pripni PDF*. Datoteka se shrani v `uploads/<projectId>/...`, zapis v tabeli dobi gumb **Odpri**.
+- **Arhiviranje/obnova:** v tabeli stroškov uporabi ikono arhiva za preklop `isArchived`. V pogledu *Prikaži arhiv* je na voljo tudi **Trajno izbriši**.
+
 ## Tema (light/dark)
 - Tema se privzeto nastavi glede na sistemski `prefers-color-scheme` in se ob spremembi sistema samodejno posodobi.
 - V zgornji orodni vrstici je preklop (System / Light / Dark); izbira se shrani v `localStorage` (`gradnja-theme`), na `<html>` se doda/odstrani razred `dark` (class-based pristop).

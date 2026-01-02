@@ -7,8 +7,8 @@ export function CumulatedLineChart() {
   const { costs } = useData();
   const data = useMemo(() => {
     const totals: Record<string, number> = {};
-    costs.forEach((c) => {
-      const month = c.date.slice(0, 7);
+    costs.filter((c) => !c.is_archived).forEach((c) => {
+      const month = (c.invoice_month || c.invoice_date.slice(0, 7)).slice(0, 7);
       totals[month] = (totals[month] || 0) + c.amount_gross;
     });
     const entries = Object.entries(totals).sort(([a], [b]) => (a > b ? 1 : -1));
