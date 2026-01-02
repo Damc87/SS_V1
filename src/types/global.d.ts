@@ -1,4 +1,4 @@
-import type { Contractor, Cost, Document, Phase, Project, Subphase } from './types';
+import type { Contractor, Cost, CostInput, CostListResult, Document, Phase, Project, Subphase } from './types';
 
 declare global {
   interface Window {
@@ -14,7 +14,7 @@ declare global {
       phases: {
         list: () => Promise<Phase[]>;
         create: (name: string) => Promise<Phase>;
-        update: (id: string, name: string) => Promise<Phase | null>;
+        update: (id: string, payload: string | { name?: string; budget_planned?: number }) => Promise<Phase | null>;
         remove: (id: string) => Promise<void>;
         reorder: (order: string[]) => Promise<Phase[]>;
         subphases: {
@@ -31,10 +31,13 @@ declare global {
         remove: (id: string) => Promise<void>;
       };
       costs: {
-        list: (filters: Record<string, unknown>) => Promise<Cost[]>;
-        create: (data: Omit<Cost, 'id' | 'created_at'>) => Promise<Cost>;
-        update: (id: string, data: Partial<Omit<Cost, 'id' | 'created_at' | 'project_id'>>) => Promise<Cost | null>;
+        list: (filters: Record<string, unknown>) => Promise<CostListResult>;
+        create: (data: CostInput) => Promise<Cost>;
+        update: (id: string, data: Partial<CostInput>) => Promise<Cost | null>;
         remove: (id: string) => Promise<void>;
+        duplicate: (id: string) => Promise<Cost | null>;
+        bulkCreate: (entries: CostInput[]) => Promise<Cost[]>;
+        planVsActual: (projectId: string) => Promise<any>;
       };
       documents: {
         attach: (payload: { projectId: string; costId?: string; filePath: string }) => Promise<Document>;
@@ -43,11 +46,11 @@ declare global {
         remove: (id: string) => Promise<void>;
       };
       export: {
-        csv: (projectId?: string) => Promise<string>;
+        csv: (projectId?: string, filters?: Record<string, unknown>) => Promise<string>;
         backup: () => Promise<string | null>;
       };
       import: {
-        csv: (csv: string) => Promise<Cost[]>;
+        csv: (csv: string, projectId: string) => Promise<any>;
         backup: () => Promise<boolean | null>;
       };
       paths: {

@@ -24,6 +24,9 @@ export type MainChannels =
   | 'costs:create'
   | 'costs:update'
   | 'costs:delete'
+  | 'costs:duplicate'
+  | 'costs:bulkCreate'
+  | 'costs:planVsActual'
   | 'documents:attach'
   | 'documents:listByProject'
   | 'documents:open'
@@ -49,7 +52,7 @@ declare global {
       phases: {
         list: () => Promise<any>;
         create: (name: string) => Promise<any>;
-        update: (id: string, name: string) => Promise<any>;
+        update: (id: string, payload: any) => Promise<any>;
         remove: (id: string) => Promise<void>;
         reorder: (order: string[]) => Promise<any>;
         subphases: {
@@ -70,6 +73,9 @@ declare global {
         create: (data: any) => Promise<any>;
         update: (id: string, data: any) => Promise<any>;
         remove: (id: string) => Promise<void>;
+        duplicate: (id: string) => Promise<any>;
+        bulkCreate: (entries: any[]) => Promise<any>;
+        planVsActual: (projectId: string) => Promise<any>;
       };
       documents: {
         attach: (payload: { projectId: string; costId?: string; filePath: string }) => Promise<any>;
@@ -78,11 +84,11 @@ declare global {
         remove: (id: string) => Promise<void>;
       };
       export: {
-        csv: (projectId?: string) => Promise<string>;
+        csv: (projectId?: string, filters?: Record<string, unknown>) => Promise<string>;
         backup: () => Promise<string | null>;
       };
       import: {
-        csv: (csv: string) => Promise<any>;
+        csv: (csv: string, projectId: string) => Promise<any>;
         backup: () => Promise<boolean | null>;
       };
       paths: {

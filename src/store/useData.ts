@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
-import type { Project, Phase, Subphase, Contractor, Cost, Document } from '../types';
+import type { Project, Phase, Subphase, Contractor, Cost, CostInput, CostListResult, Document } from '../types';
 
 export type DataState = {
   projects: Project[];
@@ -9,15 +9,24 @@ export type DataState = {
   subphases: Record<string, Subphase[]>;
   contractors: Contractor[];
   costs: Cost[];
+  costTotal: number;
   documents: Document[];
   loading: boolean;
   error?: string | null;
   loadAll: () => Promise<void>;
   setActiveProject: (id: string) => Promise<void>;
   addProject: (payload: Pick<Project, 'name' | 'description'>) => Promise<Project>;
-  addCost: (payload: Omit<Cost, 'id' | 'created_at'>) => Promise<Cost>;
+  refreshCosts: (filters?: Record<string, unknown>) => Promise<void>;
+  createCost: (payload: CostInput) => Promise<Cost>;
+  updateCost: (id: string, patch: Partial<CostInput>) => Promise<Cost | null>;
+  deleteCost: (id: string) => Promise<void>;
+  duplicateCost: (id: string) => Promise<Cost | null>;
+  importCosts: (csv: string, projectId: string) => Promise<any>;
+  exportCosts: (projectId?: string, filters?: Record<string, unknown>) => Promise<string>;
+  phasePlanVsActual: (projectId?: string) => Promise<any>;
   refreshDocuments: (projectId: string) => Promise<void>;
   addPhase: (name: string) => Promise<void>;
+  updatePhaseBudget: (id: string, budget: number) => Promise<void>;
 };
 
 export const useData = create<DataState>((set, get) => ({
@@ -27,6 +36,7 @@ export const useData = create<DataState>((set, get) => ({
   subphases: {},
   contractors: [],
   costs: [],
+  costTotal: 0,
   documents: [],
   loading: false,
   error: null,
@@ -61,9 +71,9 @@ export const useData = create<DataState>((set, get) => ({
   setActiveProject: async (id: string) => {
     try {
       await window.api.projects.setActive(id);
-      const costs = await window.api.costs.list({ projectId: id });
+      const { items, total } = (await window.api.costs.list({ projectId: id })) as CostListResult;
       const documents = await window.api.documents.listByProject(id);
-      set({ activeProjectId: id, costs, documents, error: null });
+      set({ activeProjectId: id, costs: items, costTotal: total, documents, error: null });
     } catch (error) {
       console.error('setActiveProject failed', error);
       toast.error('Aktivacija projekta ni uspela.');
@@ -81,16 +91,95 @@ export const useData = create<DataState>((set, get) => ({
       throw error;
     }
   },
-  addCost: async (payload) => {
+  refreshCosts: async (filters = {}) => {
+    const projectId = (filters as any).projectId ?? get().activeProjectId;
+    if (!projectId) return;
+    try {
+      const { items, total } = (await window.api.costs.list({ ...filters, projectId })) as CostListResult;
+      set({ costs: items, costTotal: total });
+    } catch (error) {
+      console.error('refreshCosts failed', error);
+      toast.error('Osvežitev stroškov ni uspela.');
+      set({ error: (error as Error)?.message ?? 'Napaka' });
+    }
+  },
+  createCost: async (payload) => {
     try {
       const cost = await window.api.costs.create(payload);
-      const costs = await window.api.costs.list({ projectId: payload.project_id });
-      set({ costs });
+      await get().refreshCosts({ projectId: payload.project_id });
       return cost;
     } catch (error) {
-      console.error('addCost failed', error);
+      console.error('createCost failed', error);
       toast.error('Shranjevanje stroška ni uspelo.');
       throw error;
+    }
+  },
+  updateCost: async (id, patch) => {
+    try {
+      const updated = await window.api.costs.update(id, patch);
+      if (updated) {
+        set((state) => ({ costs: state.costs.map((c) => (c.id === id ? updated : c)) }));
+      }
+      return updated;
+    } catch (error) {
+      console.error('updateCost failed', error);
+      toast.error('Posodobitev stroška ni uspela.');
+      throw error;
+    }
+  },
+  deleteCost: async (id) => {
+    try {
+      await window.api.costs.remove(id);
+      set((state) => ({ costs: state.costs.filter((c) => c.id !== id) }));
+    } catch (error) {
+      console.error('deleteCost failed', error);
+      toast.error('Brisanje stroška ni uspelo.');
+      throw error;
+    }
+  },
+  duplicateCost: async (id) => {
+    try {
+      const copy = await window.api.costs.duplicate(id);
+      if (copy) {
+        set((state) => ({ costs: [copy, ...state.costs] }));
+      }
+      return copy;
+    } catch (error) {
+      console.error('duplicateCost failed', error);
+      toast.error('Podvajanje stroška ni uspelo.');
+      throw error;
+    }
+  },
+  importCosts: async (csv, projectId) => {
+    try {
+      const result = await window.api.import.csv(csv, projectId);
+      if (result?.created?.length) {
+        await get().refreshCosts({ projectId });
+      }
+      return result;
+    } catch (error) {
+      console.error('importCosts failed', error);
+      toast.error('Uvoz CSV ni uspel.');
+      throw error;
+    }
+  },
+  exportCosts: async (projectId, filters = {}) => {
+    try {
+      return await window.api.export.csv(projectId, filters);
+    } catch (error) {
+      console.error('exportCosts failed', error);
+      toast.error('Izvoz CSV ni uspel.');
+      throw error;
+    }
+  },
+  phasePlanVsActual: async (projectId) => {
+    const current = projectId ?? get().activeProjectId;
+    if (!current) return [];
+    try {
+      return await window.api.costs.planVsActual(current);
+    } catch (error) {
+      console.error('phasePlanVsActual failed', error);
+      return [];
     }
   },
   refreshDocuments: async (projectId) => {
@@ -117,6 +206,16 @@ export const useData = create<DataState>((set, get) => ({
       console.error('addPhase failed', error);
       toast.error('Dodajanje faze ni uspelo.');
       set({ error: (error as Error)?.message ?? 'Napaka' });
+    }
+  },
+  updatePhaseBudget: async (id, budget) => {
+    try {
+      await window.api.phases.update(id, { budget_planned: budget });
+      const phases = await window.api.phases.list();
+      set({ phases });
+    } catch (error) {
+      console.error('updatePhaseBudget failed', error);
+      toast.error('Posodobitev plana ni uspela.');
     }
   },
 }));
