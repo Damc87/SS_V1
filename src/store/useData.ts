@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
-import type { Project, Phase, Subphase, Contractor, Cost, CostInput, CostListResult, Document } from '../types';
+import type { Project, MainPhase, Subphase, Contractor, Cost, CostInput, CostListResult, Document } from '../types';
 
 export type DataState = {
   projects: Project[];
   activeProjectId: string | null;
-  phases: Phase[];
+  phases: MainPhase[];
   subphases: Record<string, Subphase[]>;
   contractors: Contractor[];
   costs: Cost[];
@@ -26,8 +26,14 @@ export type DataState = {
   exportCosts: (projectId?: string, filters?: Record<string, unknown>) => Promise<string>;
   phasePlanVsActual: (projectId?: string) => Promise<unknown>;
   refreshDocuments: (projectId: string) => Promise<void>;
-  addPhase: (name: string) => Promise<void>;
-  updatePhaseBudget: (id: string, budget: number) => Promise<void>;
+  refreshPhases: () => Promise<void>;
+  addPhase: (payload: { name: string; order_no?: number }) => Promise<void>;
+  updatePhase: (id: string, payload: { name?: string; budget_planned?: number; order_no?: number }) => Promise<void>;
+  deletePhase: (id: string) => Promise<void>;
+  addSubphase: (phaseId: string, payload: { name: string; order_no?: number }) => Promise<void>;
+  updateSubphase: (id: string, payload: { name?: string; order_no?: number; main_phase_id?: string }) => Promise<void>;
+  deleteSubphase: (id: string) => Promise<void>;
+  importPhasesCsv: (csv: string) => Promise<void>;
   createContractor: (payload: Omit<Contractor, 'id' | 'created_at'>) => Promise<Contractor>;
   updateContractor: (id: string, patch: Partial<Omit<Contractor, 'id' | 'created_at'>>) => Promise<Contractor | null>;
   deleteContractor: (id: string) => Promise<void>;
@@ -44,23 +50,27 @@ export const useData = create<DataState>((set, get) => ({
   documents: [],
   loading: false,
   error: null,
-  loadAll: async () => {
-    set({ loading: true, error: null });
+  async refreshPhases() {
     try {
-      const [projects, phases, contractors, activeProjectId] = await Promise.all([
-        window.api.projects.list(),
-        window.api.phases.list(),
-        window.api.contractors.list(),
-        window.api.projects.getActive(),
-      ]);
+      const phases = await window.api.phases.list();
       const subphases: Record<string, Subphase[]> = {};
       await Promise.all(
-        phases.map(async (p: Phase) => {
+        phases.map(async (p: MainPhase) => {
           subphases[p.id] = await window.api.phases.subphases.list(p.id);
         })
       );
-
-      set({ projects, phases, contractors, subphases, activeProjectId: activeProjectId ?? null, loading: false });
+      set({ phases, subphases });
+    } catch (error) {
+      console.error('refreshPhases failed', error);
+      toast.error('Nalaganje faz ni uspelo.');
+    }
+  },
+  loadAll: async () => {
+    set({ loading: true, error: null });
+    try {
+      const [projects, contractors, activeProjectId] = await Promise.all([window.api.projects.list(), window.api.contractors.list(), window.api.projects.getActive()]);
+      await get().refreshPhases();
+      set({ projects, contractors, activeProjectId: activeProjectId ?? null, loading: false });
 
       const current = activeProjectId ?? projects[0]?.id;
       if (current) {
@@ -169,7 +179,8 @@ export const useData = create<DataState>((set, get) => ({
   importCosts: async (csv, projectId) => {
     try {
       const result = await window.api.import.csv(csv, projectId);
-      if (result?.created?.length) {
+      const created = (result as { created?: unknown[] } | null)?.created;
+      if (created?.length) {
         await get().refreshCosts({ projectId });
       }
       return result;
@@ -207,31 +218,69 @@ export const useData = create<DataState>((set, get) => ({
       toast.error('Osvežitev dokumentov ni uspela.');
     }
   },
-  addPhase: async (name) => {
+  addPhase: async (payload) => {
     try {
-      await window.api.phases.create(name);
-      const phases = await window.api.phases.list();
-      const subphases: Record<string, Subphase[]> = {};
-      await Promise.all(
-        phases.map(async (p: Phase) => {
-          subphases[p.id] = await window.api.phases.subphases.list(p.id);
-        })
-      );
-      set({ phases, subphases, error: null });
+      await window.api.phases.create(payload);
+      await get().refreshPhases();
+      set({ error: null });
     } catch (error) {
       console.error('addPhase failed', error);
       toast.error('Dodajanje faze ni uspelo.');
       set({ error: (error as Error)?.message ?? 'Napaka' });
     }
   },
-  updatePhaseBudget: async (id, budget) => {
+  updatePhase: async (id, payload) => {
     try {
-      await window.api.phases.update(id, { budget_planned: budget });
-      const phases = await window.api.phases.list();
-      set({ phases });
+      await window.api.phases.update(id, payload);
+      await get().refreshPhases();
     } catch (error) {
-      console.error('updatePhaseBudget failed', error);
-      toast.error('Posodobitev plana ni uspela.');
+      console.error('updatePhase failed', error);
+      toast.error('Posodobitev faze ni uspela.');
+    }
+  },
+  deletePhase: async (id) => {
+    try {
+      await window.api.phases.remove(id);
+      await get().refreshPhases();
+    } catch (error) {
+      console.error('deletePhase failed', error);
+      toast.error('Brisanje faze ni uspelo.');
+    }
+  },
+  addSubphase: async (phaseId, payload) => {
+    try {
+      await window.api.phases.subphases.create(phaseId, payload);
+      await get().refreshPhases();
+    } catch (error) {
+      console.error('addSubphase failed', error);
+      toast.error('Dodajanje podfaze ni uspelo.');
+    }
+  },
+  updateSubphase: async (id, payload) => {
+    try {
+      await window.api.phases.subphases.update(id, payload);
+      await get().refreshPhases();
+    } catch (error) {
+      console.error('updateSubphase failed', error);
+      toast.error('Posodobitev podfaze ni uspela.');
+    }
+  },
+  deleteSubphase: async (id) => {
+    try {
+      await window.api.phases.subphases.remove(id);
+      await get().refreshPhases();
+    } catch (error) {
+      console.error('deleteSubphase failed', error);
+      toast.error('Brisanje podfaze ni uspelo.');
+    }
+  },
+  importPhasesCsv: async (csv) => {
+    try {
+      await window.api.phases.importCsv(csv);
+      await get().refreshPhases();
+    } catch (error) {
+      console.error('importPhasesCsv failed', error);
+      toast.error((error as Error)?.message ?? 'Uvoz faz ni uspel.');
     }
   },
   createContractor: async (payload) => {

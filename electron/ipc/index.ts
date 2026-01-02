@@ -12,12 +12,13 @@ ipcMain.handle('projects:setActive', (_e, id) => db.setActiveProject(id));
 ipcMain.handle('projects:getActive', () => db.getActiveProject());
 
 ipcMain.handle('phases:list', () => db.listPhases());
-ipcMain.handle('phases:create', (_e, name) => db.createPhase(name));
-ipcMain.handle('phases:update', (_e, id, name) => db.updatePhase(id, name));
+ipcMain.handle('phases:create', (_e, payload) => db.createPhase(payload));
+ipcMain.handle('phases:update', (_e, id, payload) => db.updatePhase(id, payload));
 ipcMain.handle('phases:delete', (_e, id) => db.deletePhase(id));
 ipcMain.handle('phases:reorder', (_e, order) => db.reorderPhases(order));
-ipcMain.handle('subphases:create', (_e, phaseId, name) => db.createSubphase(phaseId, name));
-ipcMain.handle('subphases:update', (_e, id, name) => db.updateSubphase(id, name));
+ipcMain.handle('phases:importCsv', (_e, csv) => db.importPhasesCsv(csv));
+ipcMain.handle('subphases:create', (_e, phaseId, payload) => db.createSubphase(phaseId, payload));
+ipcMain.handle('subphases:update', (_e, id, payload) => db.updateSubphase(id, payload));
 ipcMain.handle('subphases:delete', (_e, id) => db.deleteSubphase(id));
 ipcMain.handle('subphases:list', (_e, phaseId) => db.listSubphases(phaseId));
 

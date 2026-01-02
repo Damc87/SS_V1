@@ -18,7 +18,10 @@ type ContractorDraft = {
 export function ContractorsPage() {
   const navigate = useNavigate();
   const { activeProjectId, contractors, phases, createContractor, updateContractor, deleteContractor } = useData();
-  const projectPhases = useMemo(() => phases.filter((p) => !p.project_id || p.project_id === activeProjectId), [phases, activeProjectId]);
+  const projectPhases = useMemo(() => {
+    const filtered = phases.filter((p) => !p.project_id || p.project_id === activeProjectId);
+    return [...filtered].sort((a, b) => a.order_no - b.order_no);
+  }, [phases, activeProjectId]);
   const projectContractors = useMemo(
     () => contractors.filter((c) => !c.project_id || c.project_id === activeProjectId),
     [contractors, activeProjectId]
