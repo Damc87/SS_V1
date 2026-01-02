@@ -6,7 +6,7 @@
   "author": "",
   "license": "MIT",
   "scripts": {
-    "dev": "concurrently \"tsc -p tsconfig.electron.json --watch\" \"vite --host 0.0.0.0 --port 5173\" \"wait-on http://localhost:5173 dist-electron/main.js && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron dist-electron/main.js\"",
+    "dev": "concurrently \"tsc -p tsconfig.electron.json --watch\" \"vite --host 0.0.0.0 --port 5173\" \"cross-env VITE_DEV_SERVER_URL=http://localhost:5173 node ./scripts/dev-electron.js\"",
     "build:renderer": "vite build",
     "build:electron": "tsc -p tsconfig.electron.json",
     "build": "npm run build:renderer && npm run build:electron",

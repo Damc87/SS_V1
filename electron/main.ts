@@ -22,10 +22,25 @@ async function createWindow() {
   const devServer = process.env.VITE_DEV_SERVER_URL || (isDev ? 'http://localhost:5173' : null);
   if (devServer) {
     await win.loadURL(devServer);
-    win.webContents.openDevTools({ mode: 'detach' });
   } else {
     const indexHtml = path.join(__dirname, '../dist/index.html');
     await win.loadFile(indexHtml);
+  }
+
+  if (isDev) {
+    win.webContents.on('before-input-event', (event, input) => {
+      const key = input.key?.toLowerCase();
+      const isToggleShortcut =
+        key === 'i' && input.shift && (input.control || input.meta);
+      if (isToggleShortcut) {
+        event.preventDefault();
+        if (win.webContents.isDevToolsOpened()) {
+          win.webContents.closeDevTools();
+        } else {
+          win.webContents.openDevTools({ mode: 'detach' });
+        }
+      }
+    });
   }
 }
 
