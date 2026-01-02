@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
-import type { Project, MainPhase, Subphase, Contractor, Cost, CostInput, CostListResult, Document } from '../types';
+import type { Project, MainPhase, Subphase, Contractor, Cost, CostInput, CostListResult, Document, PhasesImportResult } from '../types';
 
 export type DataState = {
   projects: Project[];
@@ -27,13 +27,13 @@ export type DataState = {
   phasePlanVsActual: (projectId?: string) => Promise<unknown>;
   refreshDocuments: (projectId: string) => Promise<void>;
   refreshPhases: () => Promise<void>;
-  addPhase: (payload: { name: string; order_no?: number }) => Promise<void>;
+  addPhase: (payload: { name: string; order_no?: number; project_id?: string }) => Promise<void>;
   updatePhase: (id: string, payload: { name?: string; budget_planned?: number; order_no?: number }) => Promise<void>;
   deletePhase: (id: string) => Promise<void>;
   addSubphase: (phaseId: string, payload: { name: string; order_no?: number }) => Promise<void>;
   updateSubphase: (id: string, payload: { name?: string; order_no?: number; main_phase_id?: string }) => Promise<void>;
   deleteSubphase: (id: string) => Promise<void>;
-  importPhasesCsv: (csv: string) => Promise<void>;
+  importPhasesCsv: (csv: string) => Promise<PhasesImportResult | null>;
   createContractor: (payload: Omit<Contractor, 'id' | 'created_at'>) => Promise<Contractor>;
   updateContractor: (id: string, patch: Partial<Omit<Contractor, 'id' | 'created_at'>>) => Promise<Contractor | null>;
   deleteContractor: (id: string) => Promise<void>;
@@ -52,14 +52,16 @@ export const useData = create<DataState>((set, get) => ({
   error: null,
   async refreshPhases() {
     try {
+      const { activeProjectId } = get();
       const phases = await window.api.phases.list();
+      const filtered = activeProjectId ? phases.filter((p) => !p.project_id || p.project_id === activeProjectId) : phases;
       const subphases: Record<string, Subphase[]> = {};
       await Promise.all(
-        phases.map(async (p: MainPhase) => {
+        filtered.map(async (p: MainPhase) => {
           subphases[p.id] = await window.api.phases.subphases.list(p.id);
         })
       );
-      set({ phases, subphases });
+      set({ phases: filtered, subphases });
     } catch (error) {
       console.error('refreshPhases failed', error);
       toast.error('Nalaganje faz ni uspelo.');
@@ -84,11 +86,13 @@ export const useData = create<DataState>((set, get) => ({
   },
   setActiveProject: async (id: string) => {
     try {
+      set({ activeProjectId: id });
       await window.api.projects.setActive(id);
       const { items, total } = (await window.api.costs.list({ projectId: id })) as CostListResult;
       const documents = await window.api.documents.listByProject(id);
       const contractors = await window.api.contractors.list({ projectId: id });
       set({ activeProjectId: id, costs: items, costTotal: total, documents, contractors, error: null });
+      await get().refreshPhases();
     } catch (error) {
       console.error('setActiveProject failed', error);
       toast.error('Aktivacija projekta ni uspela.');
@@ -220,7 +224,11 @@ export const useData = create<DataState>((set, get) => ({
   },
   addPhase: async (payload) => {
     try {
-      await window.api.phases.create(payload);
+      const project_id = get().activeProjectId;
+      if (!project_id) {
+        throw new Error('Ni aktivnega projekta');
+      }
+      await window.api.phases.create({ ...payload, project_id });
       await get().refreshPhases();
       set({ error: null });
     } catch (error) {
@@ -276,11 +284,17 @@ export const useData = create<DataState>((set, get) => ({
   },
   importPhasesCsv: async (csv) => {
     try {
-      await window.api.phases.importCsv(csv);
+      const projectId = get().activeProjectId;
+      if (!projectId) {
+        throw new Error('Ni aktivnega projekta');
+      }
+      const result = (await window.api.phases.importCsv(csv, projectId)) as PhasesImportResult;
       await get().refreshPhases();
+      return result;
     } catch (error) {
       console.error('importPhasesCsv failed', error);
       toast.error((error as Error)?.message ?? 'Uvoz faz ni uspel.');
+      return null;
     }
   },
   createContractor: async (payload) => {

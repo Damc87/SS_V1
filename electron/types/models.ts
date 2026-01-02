@@ -13,7 +13,7 @@ export type Project = {
 
 export type MainPhase = { id: string; name: string; order_no: number; budget_planned?: number; project_id?: string };
 export type Phase = MainPhase;
-export type Subphase = { id: string; main_phase_id: string; name: string; order_no: number };
+export type Subphase = { id: string; main_phase_id: string; name: string; order_no: number; project_id?: string };
 
 export type Contractor = {
   id: string;
@@ -78,4 +78,11 @@ export type Document = {
   mime: string;
   size: number;
   created_at: string;
+};
+
+export type PhasesImportResult = {
+  projectId: string;
+  mainPhases: number;
+  subphases: number;
+  validRows: number;
 };

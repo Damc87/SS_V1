@@ -117,11 +117,16 @@ class JsonDatabase {
       budget_planned: Number((p as any).budget_planned ?? 0),
     }));
 
-    this.state.subphases = this.state.subphases.map((s, idx) => ({
-      ...s,
-      main_phase_id: (s as any).main_phase_id ?? (s as any).phase_id ?? '',
-      order_no: s.order_no ?? idx + 1,
-    }));
+    this.state.subphases = this.state.subphases.map((s, idx) => {
+      const main_phase_id = (s as any).main_phase_id ?? (s as any).phase_id ?? '';
+      const project_id = (s as any).project_id ?? this.state!.phases.find((p) => p.id === main_phase_id)?.project_id;
+      return {
+        ...s,
+        main_phase_id,
+        order_no: s.order_no ?? idx + 1,
+        project_id,
+      };
+    });
 
     this.state.contractors = this.state.contractors.map((c) => ({
       ...c,
@@ -271,15 +276,16 @@ class JsonDatabase {
     return [...this.state!.phases].sort((a, b) => a.order_no - b.order_no);
   }
 
-  async createPhase(payload: { name: string; order_no?: number; id?: string }) {
+  async createPhase(payload: { name: string; order_no?: number; id?: string; project_id?: string }) {
     await this.init();
     return this.withLock(async () => {
       const order_no = payload.order_no ?? (this.state!.phases.reduce((max, p) => Math.max(max, p.order_no), 0) || 0) + 1;
-      const phase: Phase = { id: payload.id ?? uuidv4(), name: payload.name, order_no, budget_planned: 0 };
+      const phase: Phase = { id: payload.id ?? uuidv4(), name: payload.name, order_no, budget_planned: 0, project_id: payload.project_id };
       const existing = this.state!.phases.find((p) => p.id === phase.id);
       if (existing) {
         existing.name = payload.name;
         existing.order_no = order_no;
+        existing.project_id = existing.project_id ?? payload.project_id;
         await this.persist();
         return existing;
       }
@@ -333,23 +339,40 @@ class JsonDatabase {
 
   async listSubphases(phaseId: string) {
     await this.init();
-    return this.state!.subphases.filter((s) => s.main_phase_id === phaseId).sort((a, b) => a.order_no - b.order_no);
+    const mainPhase = this.state!.phases.find((p) => p.id === phaseId);
+    const projectId = mainPhase?.project_id;
+    return this.state!.subphases
+      .filter((s) => s.main_phase_id === phaseId && (!projectId || (s.project_id ?? '') === projectId))
+      .sort((a, b) => a.order_no - b.order_no);
   }
 
   async createSubphase(phaseId: string, payload: { name: string; order_no?: number; id?: string }) {
     await this.init();
     return this.withLock(async () => {
+      const mainPhase = this.state!.phases.find((p) => p.id === phaseId);
+      const mainProjectId = mainPhase?.project_id ?? '';
       const next =
         payload.order_no ??
-        (this.state!.subphases.filter((s) => s.main_phase_id === phaseId).reduce((max, s) => Math.max(max, s.order_no), 0) || 0) + 1;
-      const sub: Subphase = { id: payload.id ?? uuidv4(), main_phase_id: phaseId, name: payload.name, order_no: next };
+        (this.state!.subphases
+          .filter((s) => s.main_phase_id === phaseId && (!mainProjectId || (s.project_id ?? '') === mainProjectId))
+          .reduce((max, s) => Math.max(max, s.order_no), 0) || 0) + 1;
+      const sub: Subphase = {
+        id: payload.id ?? uuidv4(),
+        main_phase_id: phaseId,
+        name: payload.name,
+        order_no: next,
+        project_id: mainPhase?.project_id,
+      };
       const existing = this.state!.subphases.find(
-        (s) => s.id === sub.id || (s.main_phase_id === phaseId && s.name.toLowerCase() === payload.name.toLowerCase())
+        (s) =>
+          (s.project_id ?? '') === (mainProjectId ?? '') &&
+          (s.id === sub.id || (s.main_phase_id === phaseId && s.name.toLowerCase() === payload.name.toLowerCase()))
       );
       if (existing) {
         existing.name = payload.name;
         existing.order_no = next;
         existing.main_phase_id = phaseId;
+        existing.project_id = existing.project_id ?? mainPhase?.project_id;
         await this.persist();
         return existing;
       }
@@ -367,6 +390,10 @@ class JsonDatabase {
       sub.name = payload.name ?? sub.name;
       sub.order_no = payload.order_no ?? sub.order_no;
       sub.main_phase_id = payload.main_phase_id ?? sub.main_phase_id;
+      if (payload.main_phase_id) {
+        const targetPhase = this.state!.phases.find((p) => p.id === payload.main_phase_id);
+        sub.project_id = targetPhase?.project_id ?? sub.project_id;
+      }
       await this.persist();
       return sub;
     });
@@ -814,74 +841,128 @@ class JsonDatabase {
     return { created: imported, missingPhases: [], missingContractors: [] };
   }
 
-  async importPhasesCsv(csv: string) {
+  async importPhasesCsv(csv: string, projectId?: string) {
     await this.init();
     return this.withLock(async () => {
+      if (!projectId) {
+        throw new Error('Ni aktivnega projekta');
+      }
       const lines = csv.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
       if (!lines.length) throw new Error('CSV je prazen.');
       const headers = lines[0].split(';').map((h) => h.trim().toLowerCase());
       const expected = ['glavna_faza_id', 'glavna_faza_naziv', 'podfaza_id', 'podfaza_naziv', 'zaporedje'];
-      if (expected.some((h, idx) => headers[idx] !== h)) {
-        throw new Error(`CSV ni veljaven. Pričakovana glava: ${expected.join(';')}`);
+      const headerSet = new Set(headers);
+      if (headers.length !== expected.length || expected.some((h) => !headerSet.has(h)) || headers.some((h) => !expected.includes(h))) {
+        throw new Error(`CSV ni veljaven. Pričakovani stolpci: ${expected.join(';')}`);
       }
 
+      const indices = Object.fromEntries(expected.map((h) => [h, headers.indexOf(h)]));
       const orderHints = new Map<string, number>();
+      const mainPhaseKeys = new Set<string>();
+      const subphaseKeys = new Set<string>();
+      let validRows = 0;
+
+      const phasesByKey = new Map<string, Phase>();
+      this.state!.phases.forEach((p) => phasesByKey.set(`${p.project_id ?? ''}::${p.id}`, p));
 
       lines.slice(1).forEach((line, idx) => {
-        const cols = line.split(';');
-        if (cols.length < expected.length) {
-          throw new Error(`Neveljavna vrstica ${idx + 2}: ${line}`);
-        }
-        const [phaseIdRaw, phaseNameRaw, subIdRaw, subNameRaw, orderRaw] = cols.map((c) => c.trim());
+        const cols = line.split(';').map((c) => c.trim());
+        const getValue = (field: string) => cols[indices[field]]?.replace(/^"|"$/g, '') ?? '';
+        const phaseIdRaw = getValue('glavna_faza_id');
+        const phaseNameRaw = getValue('glavna_faza_naziv');
+        const subIdRaw = getValue('podfaza_id');
+        const subNameRaw = getValue('podfaza_naziv');
+        const orderRaw = getValue('zaporedje');
+
         if (!phaseIdRaw || !phaseNameRaw) {
-          throw new Error(`Manjkajoča glavna faza v vrstici ${idx + 2}.`);
+          return;
         }
-        let phase = this.state!.phases.find((p) => p.id === phaseIdRaw);
+
+        validRows += 1;
+        const phaseKey = `${projectId}::${phaseIdRaw}`;
+        const fallbackPhaseKey = `::${phaseIdRaw}`;
+        let phase = phasesByKey.get(phaseKey) ?? phasesByKey.get(fallbackPhaseKey);
         if (!phase) {
-          phase = { id: phaseIdRaw, name: phaseNameRaw, order_no: this.state!.phases.length + 1, budget_planned: 0 };
+          const nextOrder =
+            (this.state!.phases
+              .filter((p) => (p.project_id ?? '') === projectId)
+              .reduce((max, p) => Math.max(max, p.order_no), 0) || 0) + 1;
+          phase = { id: phaseIdRaw, name: phaseNameRaw, order_no: nextOrder, budget_planned: 0, project_id: projectId };
           this.state!.phases.push(phase);
+          phasesByKey.set(phaseKey, phase);
         } else {
           phase.name = phaseNameRaw;
+          phase.project_id = phase.project_id ?? projectId;
+          phasesByKey.set(phaseKey, phase);
+          if (fallbackPhaseKey !== phaseKey) {
+            phasesByKey.delete(fallbackPhaseKey);
+          }
         }
-        if (!orderHints.has(phase.id)) {
-          orderHints.set(phase.id, idx + 1);
+        mainPhaseKeys.add(phaseKey);
+        if (!orderHints.has(phaseKey)) {
+          orderHints.set(phaseKey, idx + 1);
         }
 
         if (!subIdRaw || !subNameRaw) return;
         const parsedOrder = Number(orderRaw);
-        const siblings = this.state!.subphases.filter((s) => s.main_phase_id === phase.id);
+        const siblings = this.state!.subphases.filter((s) => s.main_phase_id === phase!.id && ((s.project_id ?? projectId) === projectId));
         const nextOrder = (siblings.reduce((max, s) => Math.max(max, s.order_no), 0) || 0) + 1;
         const order_no = Number.isFinite(parsedOrder) && parsedOrder > 0 ? parsedOrder : nextOrder;
 
+        const subKey = `${projectId}::${subIdRaw}`;
         const existing = this.state!.subphases.find(
-          (s) => s.id === subIdRaw || (s.main_phase_id === phase!.id && s.name.toLowerCase() === subNameRaw.toLowerCase())
+          (s) =>
+            ((s.project_id ?? '') === projectId || !s.project_id) &&
+            (s.id === subIdRaw || (s.main_phase_id === phase!.id && s.name.toLowerCase() === subNameRaw.toLowerCase()))
         );
         if (existing) {
           existing.name = subNameRaw;
-          existing.main_phase_id = phase.id;
+          existing.main_phase_id = phase!.id;
           existing.order_no = order_no;
+          existing.project_id = projectId;
         } else {
-          this.state!.subphases.push({ id: subIdRaw, main_phase_id: phase.id, name: subNameRaw, order_no });
+          this.state!.subphases.push({ id: subIdRaw, main_phase_id: phase!.id, name: subNameRaw, order_no, project_id: projectId });
         }
+        subphaseKeys.add(subKey);
       });
 
-      const sortedPhases = [...this.state!.phases].sort((a, b) => (orderHints.get(a.id) ?? a.order_no) - (orderHints.get(b.id) ?? b.order_no));
+      if (validRows === 0) {
+        throw new Error('CSV ni vseboval veljavnih faz');
+      }
+
+      const projectPhases = this.state!.phases.filter((p) => (p.project_id ?? '') === projectId);
+      const sortedPhases = [...projectPhases].sort(
+        (a, b) => (orderHints.get(`${projectId}::${a.id}`) ?? a.order_no) - (orderHints.get(`${projectId}::${b.id}`) ?? b.order_no)
+      );
       sortedPhases.forEach((phase, idx) => {
         phase.order_no = idx + 1;
       });
 
-      const grouped = this.state!.subphases.reduce<Record<string, Subphase[]>>((acc, sub) => {
-        acc[sub.main_phase_id] = acc[sub.main_phase_id] ?? [];
-        acc[sub.main_phase_id].push(sub);
-        return acc;
-      }, {});
+      const grouped = this.state!.subphases
+        .filter((s) => (s.project_id ?? '') === projectId)
+        .reduce<Record<string, Subphase[]>>((acc, sub) => {
+          acc[sub.main_phase_id] = acc[sub.main_phase_id] ?? [];
+          acc[sub.main_phase_id].push(sub);
+          return acc;
+        }, {});
       Object.values(grouped).forEach((list) => {
-        list.sort((a, b) => a.order_no - b.order_no).forEach((s, idx) => {
-          s.order_no = idx + 1;
-        });
+        list
+          .sort((a, b) => a.order_no - b.order_no)
+          .forEach((s, idx) => {
+            s.order_no = idx + 1;
+          });
       });
 
+      if (process.env.NODE_ENV !== 'production') {
+        console.debug('[phases:importCsv]', {
+          projectId,
+          mainPhases: mainPhaseKeys.size,
+          subphases: subphaseKeys.size,
+        });
+      }
+
       await this.persist();
+      return { projectId, mainPhases: mainPhaseKeys.size, subphases: subphaseKeys.size, validRows };
     });
   }
 

@@ -138,8 +138,9 @@ export function PhasesPage() {
     const reader = new FileReader();
     reader.onload = async () => {
       try {
-        await importPhasesCsv(String(reader.result ?? ''));
-        toast.success('CSV uvoz uspešen');
+        const result = await importPhasesCsv(String(reader.result ?? ''));
+        if (!result) return;
+        toast.success(`Uvoženo: ${result.mainPhases} glavnih faz, ${result.subphases} podfaz`);
       } catch (error) {
         toast.error((error as Error)?.message ?? 'CSV uvoz ni uspel');
       } finally {
