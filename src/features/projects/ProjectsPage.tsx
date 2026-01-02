@@ -43,7 +43,7 @@ export function ProjectsPage() {
         action={
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input placeholder="Ime projekta" value={name} onChange={(e) => setName(e.target.value)} className="w-64" />
-            <Button onClick={handleCreate} disabled={!name}>
+            <Button onClick={handleCreate} disabled={!name} className="shadow-soft">
               Ustvari projekt
             </Button>
           </div>
@@ -101,13 +101,18 @@ export function ProjectsPage() {
                         )}
                       </div>
                     </CardHeader>
-                    <CardContent className="flex items-center justify-between">
+                    <CardContent className="flex flex-col gap-3">
                       <p className="text-sm text-muted-foreground">{project.description || 'Ni opisa projekta.'}</p>
-                      {!isActive && (
-                        <Button variant="ghost" onClick={() => setActiveProject(project.id)}>
-                          Nastavi kot aktivnega
-                        </Button>
-                      )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {isActive ? (
+                          <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-foreground">Aktivni</span>
+                        ) : (
+                          <Button variant="secondary" size="sm" onClick={() => setActiveProject(project.id)}>
+                            Nastavi kot aktivnega
+                          </Button>
+                        )}
+                        <span className="rounded-full border border-border/70 px-3 py-1 text-xs font-medium text-muted-foreground">ID: {project.id.slice(0, 6)}</span>
+                      </div>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -129,7 +134,7 @@ export function ProjectsPage() {
                   <Sparkles className="h-4 w-4 text-amber-500" />
                   Zaenkrat enostaven obrazec – kasneje dodajte faze in proračune.
                 </div>
-                <Button onClick={handleCreate} disabled={!name}>
+                <Button onClick={handleCreate} disabled={!name} className="shadow-soft">
                   Shrani
                 </Button>
               </div>

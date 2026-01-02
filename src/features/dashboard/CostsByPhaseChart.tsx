@@ -22,19 +22,19 @@ export function CostsByPhaseChart() {
     <div className="h-72">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
-          <XAxis dataKey="name" tickLine={false} axisLine={false} stroke="var(--color-text-secondary)" />
-          <YAxis tickLine={false} axisLine={false} stroke="var(--color-text-secondary)" />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" opacity={0.4} />
+          <XAxis dataKey="name" tickLine={false} axisLine={false} stroke="rgb(var(--text2))" />
+          <YAxis tickLine={false} axisLine={false} stroke="rgb(var(--text2))" />
           <Tooltip
             contentStyle={{
-              background: 'var(--color-surface)',
-              border: `1px solid var(--color-border)`,
+              background: 'rgb(var(--surface))',
+              border: `1px solid rgb(var(--border))`,
               borderRadius: 16,
-              boxShadow: 'var(--shadow-soft)',
+              boxShadow: 'var(--shadow)',
             }}
-            cursor={{ fill: 'var(--color-muted)', opacity: 0.4 }}
+            cursor={{ fill: 'rgb(var(--muted))', opacity: 0.3 }}
           />
-          <Bar dataKey="value" fill="var(--color-accent)" radius={[12, 12, 12, 12]} />
+          <Bar dataKey="value" fill="rgb(var(--accent))" radius={[12, 12, 12, 12]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

@@ -32,7 +32,7 @@ Offline-first namizna aplikacija za spremljanje stroškov gradnje. Grajena z Ele
 
 ## Tema (light/dark)
 - Tema se privzeto nastavi glede na sistemski `prefers-color-scheme` in se ob spremembi sistema samodejno posodobi.
-- V zgornji orodni vrstici je stikalo (System / Light / Dark); izbira se shrani v `localStorage` (`gradnja-theme`), stanje teme pa se uporablja z atributom `data-theme` na `<html>`.
+- V zgornji orodni vrstici je preklop (System / Light / Dark); izbira se shrani v `localStorage` (`gradnja-theme`), na `<html>` se doda/odstrani razred `dark` (class-based pristop).
 - Vsi elementi (sidebar, topbar, kartice, inputi, grafi, tabele, modali) uporabljajo CSS spremenljivke iz `src/styles/index.css`, zato so skladni v obeh temah.
 
 ## Struktura

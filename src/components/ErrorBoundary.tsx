@@ -1,4 +1,4 @@
-import { Component, type ReactNode } from 'react';
+import { Component, type ReactNode, type ErrorInfo } from 'react';
 import { toast } from 'sonner';
 import { AlertCircle } from 'lucide-react';
 import { Button } from './ui/button';
@@ -16,7 +16,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, message: error.message };
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Renderer error:', error, errorInfo);
     toast.error('Prišlo je do napake v aplikaciji.');
   }

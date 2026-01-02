@@ -3,6 +3,7 @@ import { useData } from '../../store/useData';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { EmptyState } from '../../components/EmptyState';
 import { ReceiptText } from 'lucide-react';
+import { cn } from '../../lib/utils';
 
 export function CostsPage() {
   const { costs, phases, contractors } = useData();
@@ -26,21 +27,21 @@ export function CostsPage() {
           {!decorated.length ? (
             <EmptyState title="Ni stroškov" description="Ko dodate prvi strošek, se bo prikazal tukaj." icon={<ReceiptText className="h-5 w-5" />} />
           ) : (
-            <div className="overflow-hidden rounded-3xl border border-border/80 shadow-inner">
+            <div className="overflow-hidden rounded-3xl border border-border/80 bg-surface/90 shadow-inner">
               <table className="min-w-full text-sm">
-                <thead className="bg-muted text-muted-foreground">
+                <thead className="bg-muted/70 text-muted-foreground">
                   <tr>
-                    <th className="text-left px-4 py-3 text-xs uppercase tracking-[0.08em] font-semibold">Datum</th>
-                    <th className="text-left px-4 py-3 text-xs uppercase tracking-[0.08em] font-semibold">Naziv</th>
-                    <th className="text-left px-4 py-3 text-xs uppercase tracking-[0.08em] font-semibold">Faza</th>
-                    <th className="text-left px-4 py-3 text-xs uppercase tracking-[0.08em] font-semibold">Izvajalec</th>
-                    <th className="text-left px-4 py-3 text-xs uppercase tracking-[0.08em] font-semibold">Status</th>
-                    <th className="text-right px-4 py-3 text-xs uppercase tracking-[0.08em] font-semibold">Bruto</th>
+                    <th className="text-left px-4 py-3 text-[11px] uppercase tracking-[0.12em] font-semibold">Datum</th>
+                    <th className="text-left px-4 py-3 text-[11px] uppercase tracking-[0.12em] font-semibold">Naziv</th>
+                    <th className="text-left px-4 py-3 text-[11px] uppercase tracking-[0.12em] font-semibold">Faza</th>
+                    <th className="text-left px-4 py-3 text-[11px] uppercase tracking-[0.12em] font-semibold">Izvajalec</th>
+                    <th className="text-left px-4 py-3 text-[11px] uppercase tracking-[0.12em] font-semibold">Status</th>
+                    <th className="text-right px-4 py-3 text-[11px] uppercase tracking-[0.12em] font-semibold">Bruto</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {decorated.map((c) => (
-                    <tr key={c.id} className="border-t border-border/70 hover:bg-muted/50">
+                  {decorated.map((c, idx) => (
+                    <tr key={c.id} className={cn('border-t border-border/60 transition hover:bg-muted/60', idx % 2 === 0 && 'bg-muted/30')}>
                       <td className="px-4 py-3 text-foreground/90">{c.date}</td>
                       <td className="px-4 py-3 font-semibold text-foreground">{c.title}</td>
                       <td className="px-4 py-3 text-muted-foreground">{c.phaseName ?? '—'}</td>

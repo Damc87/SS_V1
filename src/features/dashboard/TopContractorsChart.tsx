@@ -32,19 +32,19 @@ export function TopContractorsChart() {
     <div className="h-64">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical">
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" opacity={0.5} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" opacity={0.4} />
           <XAxis type="number" hide />
-          <YAxis dataKey="name" type="category" width={140} axisLine={false} tickLine={false} stroke="var(--color-text-secondary)" />
+          <YAxis dataKey="name" type="category" width={140} axisLine={false} tickLine={false} stroke="rgb(var(--text2))" />
           <Tooltip
             contentStyle={{
-              background: 'var(--color-surface)',
-              border: `1px solid var(--color-border)`,
+              background: 'rgb(var(--surface))',
+              border: `1px solid rgb(var(--border))`,
               borderRadius: 16,
-              boxShadow: 'var(--shadow-soft)',
+              boxShadow: 'var(--shadow)',
             }}
-            cursor={{ fill: 'var(--color-muted)', opacity: 0.35 }}
+            cursor={{ fill: 'rgb(var(--muted))', opacity: 0.28 }}
           />
-          <Bar dataKey="value" fill="var(--color-accent)" radius={[12, 12, 12, 12]} />
+          <Bar dataKey="value" fill="rgb(var(--accent))" radius={[12, 12, 12, 12]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

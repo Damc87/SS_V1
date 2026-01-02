@@ -17,7 +17,7 @@ export function PhasesPage() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="glass">
         <CardHeader>
           <CardDescription>Faze</CardDescription>
           <CardTitle>Šifrant faz in podfaz</CardTitle>
@@ -25,7 +25,7 @@ export function PhasesPage() {
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input className="sm:max-w-sm" placeholder="Dodaj fazo" value={newName} onChange={(e) => setNewName(e.target.value)} />
-            <Button variant="primary" disabled={!newName} onClick={handleAdd}>
+            <Button variant="primary" disabled={!newName} onClick={handleAdd} className="shadow-soft">
               Dodaj
             </Button>
           </div>
@@ -36,7 +36,7 @@ export function PhasesPage() {
               {phases.map((p) => (
                 <li
                   key={p.id}
-                  className="flex items-center justify-between rounded-2xl border border-border bg-elevated/70 px-4 py-3 text-sm shadow-inner"
+                  className="flex items-center justify-between rounded-2xl border border-border/70 bg-elevated/70 px-4 py-3 text-sm shadow-inner"
                 >
                   <div className="font-semibold text-foreground">{p.name}</div>
                   <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">Vrstni red: {p.order_no}</span>
