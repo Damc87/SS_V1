@@ -11,8 +11,9 @@ export type Project = {
   created_at: string;
 };
 
-export type Phase = { id: string; name: string; order_no: number; budget_planned?: number; project_id?: string };
-export type Subphase = { id: string; phase_id: string; name: string; order_no: number };
+export type MainPhase = { id: string; name: string; order_no: number; budget_planned?: number; project_id?: string };
+export type Phase = MainPhase;
+export type Subphase = { id: string; main_phase_id: string; name: string; order_no: number };
 
 export type Contractor = {
   id: string;
@@ -33,7 +34,7 @@ export type Cost = {
   project_id: string;
   date: string;
   phase_id: string;
-  subphase_id?: string;
+  subphase_id: string;
   contractor_id: string;
   description: string;
   title?: string;
@@ -55,7 +56,9 @@ export type Cost = {
   updated_at: string;
 };
 
-export type CostInput = Omit<Cost, 'id' | 'created_at' | 'updated_at' | 'payment_status_history' | 'amount_net' | 'amount_gross'> & {
+export type CostInput = Omit<Cost, 'id' | 'created_at' | 'updated_at' | 'payment_status_history' | 'amount_net' | 'amount_gross' | 'phase_id' | 'subphase_id'> & {
+  phase_id?: string;
+  subphase_id?: string;
   amount_net?: number;
   amount_gross?: number;
 };

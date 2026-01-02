@@ -11,6 +11,7 @@ export type MainChannels =
   | 'phases:create'
   | 'phases:update'
   | 'phases:delete'
+  | 'phases:importCsv'
   | 'subphases:create'
   | 'subphases:update'
   | 'subphases:delete'
@@ -51,14 +52,15 @@ declare global {
       };
       phases: {
         list: () => Promise<any>;
-        create: (name: string) => Promise<any>;
+        create: (payload: any) => Promise<any>;
         update: (id: string, payload: any) => Promise<any>;
         remove: (id: string) => Promise<void>;
         reorder: (order: string[]) => Promise<any>;
+        importCsv: (csv: string) => Promise<void>;
         subphases: {
           list: (phaseId: string) => Promise<any>;
-          create: (phaseId: string, name: string) => Promise<any>;
-          update: (id: string, name: string) => Promise<any>;
+          create: (phaseId: string, payload: any) => Promise<any>;
+          update: (id: string, payload: any) => Promise<any>;
           remove: (id: string) => Promise<void>;
         };
       };

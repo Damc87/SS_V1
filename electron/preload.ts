@@ -17,14 +17,17 @@ const api = {
   },
   phases: {
     list: () => invoke<Phase[]>('phases:list'),
-    create: (name: string) => invoke<Phase>('phases:create', name),
-    update: (id: string, payload: string | { name?: string; budget_planned?: number }) => invoke<Phase | null>('phases:update', id, payload),
+    create: (payload: { name: string; order_no?: number; id?: string }) => invoke<Phase>('phases:create', payload),
+    update: (id: string, payload: string | { name?: string; budget_planned?: number; order_no?: number }) =>
+      invoke<Phase | null>('phases:update', id, payload),
     remove: (id: string) => invoke<void>('phases:delete', id),
     reorder: (order: string[]) => invoke<Phase[]>('phases:reorder', order),
+    importCsv: (csv: string) => invoke<void>('phases:importCsv', csv),
     subphases: {
       list: (phaseId: string) => invoke<Subphase[]>('subphases:list', phaseId),
-      create: (phaseId: string, name: string) => invoke<Subphase>('subphases:create', phaseId, name),
-      update: (id: string, name: string) => invoke<Subphase | null>('subphases:update', id, name),
+      create: (phaseId: string, payload: { name: string; order_no?: number; id?: string }) => invoke<Subphase>('subphases:create', phaseId, payload),
+      update: (id: string, payload: { name?: string; order_no?: number; main_phase_id?: string }) =>
+        invoke<Subphase | null>('subphases:update', id, payload),
       remove: (id: string) => invoke<void>('subphases:delete', id),
     },
   },

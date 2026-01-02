@@ -1,80 +1,369 @@
-import { useEffect, useState } from 'react';
-import { Flag } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { Flag, Layers, UploadCloud, Plus, Edit3, Trash2, ListTree } from 'lucide-react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
+import type { MainPhase, Subphase } from '../../types';
 
 export function PhasesPage() {
-  const { phases, addPhase, updatePhaseBudget } = useData();
-  const [newName, setNewName] = useState('');
-  const [budgetDrafts, setBudgetDrafts] = useState<Record<string, string>>({});
+  const { phases, subphases, addPhase, updatePhase, deletePhase, addSubphase, updateSubphase, deleteSubphase, importPhasesCsv } = useData();
+  const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null);
+  const [phaseDialogOpen, setPhaseDialogOpen] = useState(false);
+  const [subphaseDialogOpen, setSubphaseDialogOpen] = useState(false);
+  const [editingPhase, setEditingPhase] = useState<MainPhase | null>(null);
+  const [editingSubphase, setEditingSubphase] = useState<Subphase | null>(null);
+  const [phaseDraft, setPhaseDraft] = useState<{ name: string; order_no: number; budget_planned?: number }>({
+    name: '',
+    order_no: 1,
+    budget_planned: undefined,
+  });
+  const [subphaseDraft, setSubphaseDraft] = useState<{ name: string; order_no: number }>({
+    name: '',
+    order_no: 1,
+  });
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    const draft: Record<string, string> = {};
-    phases.forEach((p) => {
-      draft[p.id] = p.budget_planned?.toString() ?? '';
-    });
-    setBudgetDrafts(draft);
+    if (!phases.length) {
+      setSelectedPhaseId(null);
+      return;
+    }
+    setSelectedPhaseId((prev) => (prev && phases.some((p) => p.id === prev) ? prev : phases[0]?.id ?? null));
   }, [phases]);
 
-  const handleAdd = async () => {
-    await addPhase(newName);
-    setNewName('');
+  const sortedPhases = useMemo(() => [...phases].sort((a, b) => a.order_no - b.order_no), [phases]);
+  const selectedSubphases = useMemo(
+    () => (selectedPhaseId ? [...(subphases[selectedPhaseId] ?? [])].sort((a, b) => a.order_no - b.order_no) : []),
+    [selectedPhaseId, subphases]
+  );
+  const selectedPhase = sortedPhases.find((p) => p.id === selectedPhaseId) ?? null;
+
+  const openPhaseDialog = (phase?: MainPhase) => {
+    if (phase) {
+      setEditingPhase(phase);
+      setPhaseDraft({ name: phase.name, order_no: phase.order_no, budget_planned: phase.budget_planned });
+    } else {
+      setEditingPhase(null);
+      setPhaseDraft({ name: '', order_no: (sortedPhases.at(-1)?.order_no ?? 0) + 1, budget_planned: undefined });
+    }
+    setPhaseDialogOpen(true);
   };
 
-  const handleBudgetSave = async (id: string) => {
-    const value = Number(budgetDrafts[id] ?? 0);
-    await updatePhaseBudget(id, value);
+  const openSubphaseDialog = (sub?: Subphase) => {
+    if (sub) {
+      setEditingSubphase(sub);
+      setSubphaseDraft({ name: sub.name, order_no: sub.order_no });
+    } else {
+      setEditingSubphase(null);
+      const nextOrder = (selectedSubphases.at(-1)?.order_no ?? 0) + 1;
+      setSubphaseDraft({ name: '', order_no: nextOrder });
+    }
+    setSubphaseDialogOpen(true);
+  };
+
+  const handleSavePhase = async () => {
+    if (!phaseDraft.name.trim()) {
+      toast.error('Naziv glavne faze je obvezen.');
+      return;
+    }
+    try {
+      if (editingPhase) {
+        await updatePhase(editingPhase.id, { ...phaseDraft, name: phaseDraft.name.trim() });
+        toast.success('Glavna faza posodobljena');
+      } else {
+        await addPhase({ ...phaseDraft, name: phaseDraft.name.trim() });
+        toast.success('Glavna faza dodana');
+      }
+      setPhaseDialogOpen(false);
+    } catch (error) {
+      toast.error((error as Error)?.message ?? 'Shranjevanje ni uspelo');
+    }
+  };
+
+  const handleSaveSubphase = async () => {
+    if (!selectedPhaseId) {
+      toast.error('Najprej izberite glavno fazo.');
+      return;
+    }
+    if (!subphaseDraft.name.trim()) {
+      toast.error('Naziv podfaze je obvezen.');
+      return;
+    }
+    try {
+      if (editingSubphase) {
+        await updateSubphase(editingSubphase.id, { ...subphaseDraft, name: subphaseDraft.name.trim(), main_phase_id: selectedPhaseId });
+        toast.success('Podfaza posodobljena');
+      } else {
+        await addSubphase(selectedPhaseId, { ...subphaseDraft, name: subphaseDraft.name.trim() });
+        toast.success('Podfaza dodana');
+      }
+      setSubphaseDialogOpen(false);
+    } catch (error) {
+      toast.error((error as Error)?.message ?? 'Shranjevanje ni uspelo');
+    }
+  };
+
+  const handleDeletePhase = async (id: string) => {
+    if (!window.confirm('Želite izbrisati glavno fazo in vse njene podfaze?')) return;
+    try {
+      await deletePhase(id);
+      toast.success('Faza izbrisana');
+      setSelectedPhaseId((prev) => (prev === id ? phases.find((p) => p.id !== id)?.id ?? null : prev));
+    } catch (error) {
+      toast.error((error as Error)?.message ?? 'Brisanje ni uspelo');
+    }
+  };
+
+  const handleDeleteSubphase = async (id: string) => {
+    if (!window.confirm('Želite izbrisati podfazo?')) return;
+    try {
+      await deleteSubphase(id);
+      toast.success('Podfaza izbrisana');
+    } catch (error) {
+      toast.error((error as Error)?.message ?? 'Brisanje ni uspelo');
+    }
+  };
+
+  const handleCsvSelect = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleCsvChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        await importPhasesCsv(String(reader.result ?? ''));
+        toast.success('CSV uvoz uspešen');
+      } catch (error) {
+        toast.error((error as Error)?.message ?? 'CSV uvoz ni uspel');
+      } finally {
+        event.target.value = '';
+      }
+    };
+    reader.readAsText(file, 'utf-8');
   };
 
   return (
     <div className="space-y-6">
       <Card className="glass">
-        <CardHeader>
-          <CardDescription>Faze</CardDescription>
-          <CardTitle>Šifrant faz in podfaz</CardTitle>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardDescription>Faze</CardDescription>
+            <CardTitle>Šifrant gradbenih faz in podfaz</CardTitle>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={handleCsvSelect} className="shadow-soft">
+              <UploadCloud className="mr-2 h-4 w-4" />
+              Uvoz CSV
+            </Button>
+            <Button variant="primary" onClick={() => openPhaseDialog()} className="shadow-soft">
+              <Plus className="mr-2 h-4 w-4" />
+              Dodaj glavno fazo
+            </Button>
+            <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleCsvChange} />
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input className="sm:max-w-sm" placeholder="Dodaj fazo" value={newName} onChange={(e) => setNewName(e.target.value)} />
-            <Button variant="primary" disabled={!newName} onClick={handleAdd} className="shadow-soft">
-              Dodaj
-            </Button>
-          </div>
-          {!phases.length ? (
+          {!sortedPhases.length ? (
             <EmptyState title="Ni faz" description="Dodajte novo fazo, da lahko sledite stroškom." icon={<Flag className="h-5 w-5" />} />
           ) : (
-            <ul className="grid gap-3 md:grid-cols-2">
-              {phases.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex items-center justify-between rounded-2xl border border-border/70 bg-elevated/70 px-4 py-3 text-sm shadow-inner"
-                >
-                  <div className="font-semibold text-foreground">{p.name}</div>
-                  <div className="flex items-center gap-2">
-                    <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">Vrstni red: {p.order_no}</span>
-                    <div className="flex items-center gap-2 rounded-xl bg-background px-2 py-1">
-                      <Input
-                        type="number"
-                        min={0}
-                        step="100"
-                        className="h-9 w-28"
-                        value={budgetDrafts[p.id] ?? ''}
-                        onChange={(e) => setBudgetDrafts((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                      />
-                      <Button size="sm" variant="secondary" onClick={() => handleBudgetSave(p.id)}>
-                        Shrani plan
-                      </Button>
-                    </div>
+            <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    <Layers className="h-4 w-4" />
+                    Glavne faze
+                  </h3>
+                  <Button size="sm" variant="ghost" onClick={() => openPhaseDialog()}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Dodaj
+                  </Button>
+                </div>
+                <div className="overflow-hidden rounded-3xl border border-border/70 bg-surface/90 shadow-inner">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-muted/70 text-muted-foreground">
+                      <tr>
+                        {['Zap.', 'Naziv', 'Podfaz'].map((header) => (
+                          <th key={header} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em]">
+                            {header}
+                          </th>
+                        ))}
+                        <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em]">Akcije</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedPhases.map((phase) => (
+                        <tr
+                          key={phase.id}
+                          className={`border-t border-border/50 ${selectedPhaseId === phase.id ? 'bg-primary/10' : 'hover:bg-muted/50'}`}
+                          onClick={() => setSelectedPhaseId(phase.id)}
+                        >
+                          <td className="px-4 py-3 font-semibold text-foreground/80">{phase.order_no}</td>
+                          <td className="px-4 py-3 font-semibold text-foreground">{phase.name}</td>
+                          <td className="px-4 py-3 text-foreground">{subphases[phase.id]?.length ?? 0}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex justify-end gap-2">
+                              <Button size="sm" variant="ghost" onClick={() => openPhaseDialog(phase)} title="Uredi">
+                                <Edit3 className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => handleDeletePhase(phase.id)} title="Izbriši">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    <ListTree className="h-4 w-4" />
+                    Podfaze {selectedPhase ? `• ${selectedPhase.name}` : ''}
+                  </h3>
+                  <Button size="sm" variant="ghost" onClick={() => openSubphaseDialog()} disabled={!selectedPhaseId}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Dodaj
+                  </Button>
+                </div>
+                {!selectedSubphases.length ? (
+                  <div className="rounded-3xl border border-dashed border-border/60 bg-muted/20 px-6 py-8 text-center">
+                    <p className="text-sm font-semibold text-muted-foreground">
+                      {selectedPhase ? 'Dodajte podfaze za izbrano glavno fazo.' : 'Izberite glavno fazo, da vidite podfaze.'}
+                    </p>
                   </div>
-                </li>
-              ))}
-            </ul>
+                ) : (
+                  <div className="overflow-hidden rounded-3xl border border-border/70 bg-surface/90 shadow-inner">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-muted/70 text-muted-foreground">
+                        <tr>
+                          {['ID', 'Zap.', 'Naziv'].map((header) => (
+                            <th key={header} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em]">
+                              {header}
+                            </th>
+                          ))}
+                          <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em]">Akcije</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedSubphases.map((sub) => (
+                          <tr key={sub.id} className="border-t border-border/50 hover:bg-muted/50">
+                            <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{sub.id}</td>
+                            <td className="px-4 py-3 font-semibold text-foreground/80">{sub.order_no}</td>
+                            <td className="px-4 py-3 text-foreground">{sub.name}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex justify-end gap-2">
+                                <Button size="sm" variant="ghost" onClick={() => openSubphaseDialog(sub)} title="Uredi">
+                                  <Edit3 className="h-4 w-4" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => handleDeleteSubphase(sub.id)} title="Izbriši">
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={phaseDialogOpen} onOpenChange={setPhaseDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingPhase ? 'Uredi glavno fazo' : 'Nova glavna faza'}</DialogTitle>
+            <DialogDescription>Uredite naziv, vrstni red in (po želji) planirani proračun.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <label className="space-y-1 text-sm font-semibold text-foreground">
+              Naziv
+              <Input value={phaseDraft.name} onChange={(e) => setPhaseDraft((prev) => ({ ...prev, name: e.target.value }))} placeholder="Naziv faze" />
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="space-y-1 text-sm font-semibold text-foreground">
+                Zaporedje
+                <Input
+                  type="number"
+                  min={1}
+                  value={phaseDraft.order_no}
+                  onChange={(e) => setPhaseDraft((prev) => ({ ...prev, order_no: Number(e.target.value) }))}
+                />
+              </label>
+              <label className="space-y-1 text-sm font-semibold text-foreground">
+                Plan (EUR)
+                <Input
+                  type="number"
+                  min={0}
+                  step="100"
+                  value={phaseDraft.budget_planned ?? ''}
+                  onChange={(e) =>
+                    setPhaseDraft((prev) => ({ ...prev, budget_planned: e.target.value === '' ? undefined : Number(e.target.value) }))
+                  }
+                  placeholder="neobvezno"
+                />
+              </label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setPhaseDialogOpen(false)}>
+              Prekliči
+            </Button>
+            <Button variant="primary" onClick={handleSavePhase}>
+              Shrani
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={subphaseDialogOpen} onOpenChange={setSubphaseDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingSubphase ? 'Uredi podfazo' : 'Nova podfaza'}</DialogTitle>
+            <DialogDescription>Podfaza mora imeti naziv in zaporedje v okviru glavne faze.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <label className="space-y-1 text-sm font-semibold text-foreground">
+              Naziv
+              <Input
+                value={subphaseDraft.name}
+                onChange={(e) => setSubphaseDraft((prev) => ({ ...prev, name: e.target.value }))}
+                placeholder="Naziv podfaze"
+              />
+            </label>
+            <label className="space-y-1 text-sm font-semibold text-foreground">
+              Zaporedje
+              <Input
+                type="number"
+                min={1}
+                value={subphaseDraft.order_no}
+                onChange={(e) => setSubphaseDraft((prev) => ({ ...prev, order_no: Number(e.target.value) }))}
+              />
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setSubphaseDialogOpen(false)}>
+              Prekliči
+            </Button>
+            <Button variant="primary" onClick={handleSaveSubphase} disabled={!selectedPhaseId}>
+              Shrani
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

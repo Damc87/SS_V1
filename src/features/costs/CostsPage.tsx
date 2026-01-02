@@ -11,7 +11,7 @@ import { useData } from '../../store/useData';
 import type { Cost, CostInput } from '../../types';
 
 type CostDraft = {
-  phase_id: string;
+  subphase_id: string;
   contractor_id: string;
   description: string;
   price: number | '';
@@ -21,10 +21,23 @@ const formatCurrency = (value: number) => value.toLocaleString('sl-SI', { style:
 
 export function CostsPage() {
   const navigate = useNavigate();
-  const { activeProjectId, costs, phases, contractors, createCost, updateCost, deleteCost } = useData();
+  const { activeProjectId, costs, phases, subphases, contractors, createCost, updateCost, deleteCost } = useData();
 
   const projectCosts = useMemo(() => costs.filter((c) => c.project_id === activeProjectId), [costs, activeProjectId]);
-  const projectPhases = useMemo(() => phases.filter((p) => !p.project_id || p.project_id === activeProjectId), [phases, activeProjectId]);
+  const projectPhases = useMemo(() => {
+    const filtered = phases.filter((p) => !p.project_id || p.project_id === activeProjectId);
+    return [...filtered].sort((a, b) => a.order_no - b.order_no);
+  }, [phases, activeProjectId]);
+  const subphaseOptions = useMemo(() => {
+    return projectPhases.flatMap((phase) => {
+      const subs = [...(subphases[phase.id] ?? [])].sort((a, b) => a.order_no - b.order_no);
+      return subs.map((sub) => ({
+        id: sub.id,
+        label: `${phase.order_no}. ${phase.name} › ${phase.order_no}.${sub.order_no} ${sub.name}`,
+        mainPhaseId: phase.id,
+      }));
+    });
+  }, [projectPhases, subphases]);
   const projectContractors = useMemo(
     () => contractors.filter((c) => !c.project_id || c.project_id === activeProjectId),
     [contractors, activeProjectId]
@@ -32,11 +45,11 @@ export function CostsPage() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Cost | null>(null);
-  const [draft, setDraft] = useState<CostDraft>({ phase_id: '', contractor_id: '', description: '', price: '' });
+  const [draft, setDraft] = useState<CostDraft>({ subphase_id: '', contractor_id: '', description: '', price: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const resetDraft = () => {
-    setDraft({ phase_id: '', contractor_id: '', description: '', price: '' });
+    setDraft({ subphase_id: '', contractor_id: '', description: '', price: '' });
     setErrors({});
   };
 
@@ -49,7 +62,7 @@ export function CostsPage() {
   const startEdit = (cost: Cost) => {
     setEditing(cost);
     setDraft({
-      phase_id: cost.phase_id,
+      subphase_id: cost.subphase_id,
       contractor_id: cost.contractor_id,
       description: cost.description ?? '',
       price: cost.amount_gross ?? cost.unit_price ?? 0,
@@ -60,7 +73,7 @@ export function CostsPage() {
 
   const validateDraft = () => {
     const validation: Record<string, string> = {};
-    if (!draft.phase_id) validation.phase_id = 'Izberite fazo';
+    if (!draft.subphase_id) validation.subphase_id = 'Izberite fazo';
     if (!draft.contractor_id) validation.contractor_id = 'Izberite izvajalca';
     const priceValue = draft.price === '' ? 0 : Number(draft.price);
     if (!Number.isFinite(priceValue) || priceValue < 0) validation.price = 'Cena mora biti ≥ 0';
@@ -75,9 +88,11 @@ export function CostsPage() {
     }
     if (!validateDraft()) return;
     const priceValue = Number(draft.price || 0);
+    const selectedSubphase = subphaseOptions.find((s) => s.id === draft.subphase_id);
     const payload: CostInput = {
       project_id: activeProjectId,
-      phase_id: draft.phase_id,
+      phase_id: selectedSubphase?.mainPhaseId ?? '',
+      subphase_id: draft.subphase_id,
       contractor_id: draft.contractor_id,
       description: draft.description ?? '',
       qty: 1,
@@ -117,7 +132,16 @@ export function CostsPage() {
 
   const missingPhases = !projectPhases.length;
   const missingContractors = !projectContractors.length;
-  const needsSetup = missingPhases || missingContractors;
+  const missingSubphases = !subphaseOptions.length;
+  const needsSetup = missingPhases || missingContractors || missingSubphases;
+
+  const formatPhase = (phaseId: string, subphaseId: string) => {
+    const main = projectPhases.find((p) => p.id === phaseId);
+    const sub = subphases[phaseId]?.find((s) => s.id === subphaseId);
+    if (main && sub) return `${main.order_no}. ${main.name} › ${main.order_no}.${sub.order_no} ${sub.name}`;
+    if (main) return main.name;
+    return '—';
+  };
 
   return (
     <div className="space-y-6">
@@ -135,8 +159,8 @@ export function CostsPage() {
         <CardContent className="space-y-4">
           {needsSetup ? (
             <EmptyState
-              title="Najprej dodajte faze in izvajalce"
-              description="Za dodajanje stroškov potrebujete vsaj eno fazo in enega izvajalca."
+              title="Najprej dodajte faze, podfaze in izvajalce"
+              description="Za dodajanje stroškov potrebujete glavno fazo s podfazo ter vsaj enega izvajalca."
               icon={<ReceiptText className="h-5 w-5" />}
               action={
                 <div className="flex gap-2">
@@ -176,7 +200,7 @@ export function CostsPage() {
                   {projectCosts.map((cost, index) => (
                     <tr key={cost.id} className={`border-t border-border/50 ${index % 2 === 0 ? 'bg-muted/30' : ''} hover:bg-muted/50`}>
                       <td className="px-4 py-3 font-semibold text-foreground/80">{index + 1}</td>
-                      <td className="px-4 py-3 text-foreground">{projectPhases.find((p) => p.id === cost.phase_id)?.name ?? '—'}</td>
+                      <td className="px-4 py-3 text-foreground">{formatPhase(cost.phase_id, cost.subphase_id)}</td>
                       <td className="px-4 py-3 text-foreground">{projectContractors.find((c) => c.id === cost.contractor_id)?.name ?? '—'}</td>
                       <td className="px-4 py-3 text-foreground">{cost.description || '—'}</td>
                       <td className="px-4 py-3 text-right font-semibold text-foreground">{formatCurrency(cost.amount_gross ?? cost.unit_price)}</td>
@@ -207,20 +231,20 @@ export function CostsPage() {
           </DialogHeader>
           <div className="space-y-3">
             <label className="space-y-1 text-sm font-semibold text-foreground">
-              Faza
+              Faza (glavna › podfaza)
               <select
                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                value={draft.phase_id}
-                onChange={(e) => setDraft((prev) => ({ ...prev, phase_id: e.target.value }))}
+                value={draft.subphase_id}
+                onChange={(e) => setDraft((prev) => ({ ...prev, subphase_id: e.target.value }))}
               >
-                <option value="">Izberi fazo</option>
-                {projectPhases.map((phase) => (
-                  <option key={phase.id} value={phase.id}>
-                    {phase.name}
+                <option value="">Izberi podfazo</option>
+                {subphaseOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
                   </option>
                 ))}
               </select>
-              {errors.phase_id && <p className="text-xs text-destructive">{errors.phase_id}</p>}
+              {errors.subphase_id && <p className="text-xs text-destructive">{errors.subphase_id}</p>}
             </label>
             <label className="space-y-1 text-sm font-semibold text-foreground">
               Izvajalec

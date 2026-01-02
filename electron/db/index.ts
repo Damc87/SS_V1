@@ -117,6 +117,12 @@ class JsonDatabase {
       budget_planned: Number((p as any).budget_planned ?? 0),
     }));
 
+    this.state.subphases = this.state.subphases.map((s, idx) => ({
+      ...s,
+      main_phase_id: (s as any).main_phase_id ?? (s as any).phase_id ?? '',
+      order_no: s.order_no ?? idx + 1,
+    }));
+
     this.state.contractors = this.state.contractors.map((c) => ({
       ...c,
       created_at: c.created_at ?? new Date().toISOString(),
@@ -124,6 +130,13 @@ class JsonDatabase {
     }));
 
     this.state.costs = this.state.costs.map((c) => {
+      let subphase_id = (c as any).subphase_id ?? '';
+      const main_phase_id = subphase_id
+        ? this.state!.subphases.find((s) => s.id === subphase_id)?.main_phase_id ?? (c as any).phase_id ?? ''
+        : (c as any).phase_id ?? '';
+      if (!subphase_id && main_phase_id) {
+        subphase_id = this.ensureDefaultSubphase(main_phase_id).id;
+      }
       const qty = Number((c as any).qty ?? 1);
       const unit_price = Number((c as any).unit_price ?? c.amount_net ?? 0);
       const { amount_net, amount_gross, vat_rate } = calculateAmounts(qty, unit_price, (c as any).vat_rate ?? c.vat_rate);
@@ -132,7 +145,8 @@ class JsonDatabase {
       const created_at = c.created_at ?? new Date().toISOString();
       return {
         ...c,
-        phase_id: (c as any).phase_id ?? '',
+        phase_id: main_phase_id ?? '',
+        subphase_id,
         contractor_id: (c as any).contractor_id ?? '',
         qty,
         unit_price,
@@ -186,7 +200,7 @@ class JsonDatabase {
       const phaseId = uuidv4();
       phases.push({ id: phaseId, name: phase.name, order_no: idx + 1, budget_planned: 0 });
       phase.subs.forEach((sub, subIdx) => {
-        subphases.push({ id: uuidv4(), phase_id: phaseId, name: sub, order_no: subIdx + 1 });
+        subphases.push({ id: uuidv4(), main_phase_id: phaseId, name: sub, order_no: subIdx + 1 });
       });
     });
     this.state.phases = phases;
@@ -257,18 +271,25 @@ class JsonDatabase {
     return [...this.state!.phases].sort((a, b) => a.order_no - b.order_no);
   }
 
-  async createPhase(name: string) {
+  async createPhase(payload: { name: string; order_no?: number; id?: string }) {
     await this.init();
     return this.withLock(async () => {
-      const order_no = (this.state!.phases.reduce((max, p) => Math.max(max, p.order_no), 0) || 0) + 1;
-      const phase: Phase = { id: uuidv4(), name, order_no, budget_planned: 0 };
+      const order_no = payload.order_no ?? (this.state!.phases.reduce((max, p) => Math.max(max, p.order_no), 0) || 0) + 1;
+      const phase: Phase = { id: payload.id ?? uuidv4(), name: payload.name, order_no, budget_planned: 0 };
+      const existing = this.state!.phases.find((p) => p.id === phase.id);
+      if (existing) {
+        existing.name = payload.name;
+        existing.order_no = order_no;
+        await this.persist();
+        return existing;
+      }
       this.state!.phases.push(phase);
       await this.persist();
       return phase;
     });
   }
 
-  async updatePhase(id: string, payload: string | { name?: string; budget_planned?: number }) {
+  async updatePhase(id: string, payload: string | { name?: string; budget_planned?: number; order_no?: number }) {
     await this.init();
     return this.withLock(async () => {
       const phase = this.state!.phases.find((p) => p.id === id);
@@ -280,6 +301,9 @@ class JsonDatabase {
         if (payload.budget_planned !== undefined) {
           phase.budget_planned = Number(payload.budget_planned);
         }
+        if (payload.order_no !== undefined) {
+          phase.order_no = Number(payload.order_no);
+        }
       }
       await this.persist();
       return phase;
@@ -290,7 +314,7 @@ class JsonDatabase {
     await this.init();
     return this.withLock(async () => {
       this.state!.phases = this.state!.phases.filter((p) => p.id !== id);
-      this.state!.subphases = this.state!.subphases.filter((s) => s.phase_id !== id);
+      this.state!.subphases = this.state!.subphases.filter((s) => s.main_phase_id !== id);
       await this.persist();
     });
   }
@@ -309,26 +333,40 @@ class JsonDatabase {
 
   async listSubphases(phaseId: string) {
     await this.init();
-    return this.state!.subphases.filter((s) => s.phase_id === phaseId).sort((a, b) => a.order_no - b.order_no);
+    return this.state!.subphases.filter((s) => s.main_phase_id === phaseId).sort((a, b) => a.order_no - b.order_no);
   }
 
-  async createSubphase(phaseId: string, name: string) {
+  async createSubphase(phaseId: string, payload: { name: string; order_no?: number; id?: string }) {
     await this.init();
     return this.withLock(async () => {
-      const next = (this.state!.subphases.filter((s) => s.phase_id === phaseId).reduce((max, s) => Math.max(max, s.order_no), 0) || 0) + 1;
-      const sub: Subphase = { id: uuidv4(), phase_id: phaseId, name, order_no: next };
+      const next =
+        payload.order_no ??
+        (this.state!.subphases.filter((s) => s.main_phase_id === phaseId).reduce((max, s) => Math.max(max, s.order_no), 0) || 0) + 1;
+      const sub: Subphase = { id: payload.id ?? uuidv4(), main_phase_id: phaseId, name: payload.name, order_no: next };
+      const existing = this.state!.subphases.find(
+        (s) => s.id === sub.id || (s.main_phase_id === phaseId && s.name.toLowerCase() === payload.name.toLowerCase())
+      );
+      if (existing) {
+        existing.name = payload.name;
+        existing.order_no = next;
+        existing.main_phase_id = phaseId;
+        await this.persist();
+        return existing;
+      }
       this.state!.subphases.push(sub);
       await this.persist();
       return sub;
     });
   }
 
-  async updateSubphase(id: string, name: string) {
+  async updateSubphase(id: string, payload: { name?: string; order_no?: number; main_phase_id?: string }) {
     await this.init();
     return this.withLock(async () => {
       const sub = this.state!.subphases.find((s) => s.id === id);
       if (!sub) return null;
-      sub.name = name;
+      sub.name = payload.name ?? sub.name;
+      sub.order_no = payload.order_no ?? sub.order_no;
+      sub.main_phase_id = payload.main_phase_id ?? sub.main_phase_id;
       await this.persist();
       return sub;
     });
@@ -464,18 +502,52 @@ class JsonDatabase {
       const hasPhase = this.state.phases.some((p) => p.id === data.phase_id);
       if (!hasPhase) throw new Error('Faza ne obstaja');
     }
+    if (data.subphase_id) {
+      const subphase = this.state.subphases.find((s) => s.id === data.subphase_id);
+      if (!subphase) throw new Error('Podfaza ne obstaja');
+      if (data.phase_id && data.phase_id !== subphase.main_phase_id) throw new Error('Podfaza ne pripada izbrani glavni fazi');
+    }
     if (data.contractor_id) {
       const hasContractor = this.state.contractors.some((c) => c.id === data.contractor_id);
       if (!hasContractor) throw new Error('Izvajalec ne obstaja');
     }
   }
 
+  private ensureDefaultSubphase(mainPhaseId: string) {
+    const siblings = this.state!.subphases.filter((s) => s.main_phase_id === mainPhaseId);
+    let sub = siblings.find((s) => s.name.toLowerCase() === 'neopredeljeno');
+    if (!sub) {
+      const order_no = (siblings.reduce((max, s) => Math.max(max, s.order_no), 0) || 0) + 1;
+      sub = { id: uuidv4(), main_phase_id: mainPhaseId, name: 'Neopredeljeno', order_no };
+      this.state!.subphases.push(sub);
+    }
+    return sub;
+  }
+
+  private resolvePhasing(data: Partial<CostInput>) {
+    const providedSubphase = data.subphase_id ? this.state!.subphases.find((s) => s.id === data.subphase_id) : undefined;
+    if (data.subphase_id && !providedSubphase) throw new Error('Podfaza ne obstaja');
+    let phase_id = providedSubphase?.main_phase_id ?? data.phase_id ?? '';
+    let subphase_id = data.subphase_id;
+
+    if (!subphase_id && phase_id) {
+      subphase_id = this.ensureDefaultSubphase(phase_id).id;
+    }
+    if (!phase_id && providedSubphase) {
+      phase_id = providedSubphase.main_phase_id;
+    }
+
+    return { phase_id, subphase_id };
+  }
+
   async createCost(data: CostInput) {
     await this.init();
     return this.withLock(async () => {
       if (!data.project_id) throw new Error('Projekt je obvezen');
-      if (!data.phase_id || !data.contractor_id) throw new Error('Faza in izvajalec sta obvezna');
-      this.assertRelations(data);
+      if (!data.contractor_id) throw new Error('Izvajalec je obvezen');
+      const { phase_id, subphase_id } = this.resolvePhasing(data);
+      if (!phase_id || !subphase_id) throw new Error('Podfaza je obvezna');
+      this.assertRelations({ ...data, phase_id, subphase_id });
       const timestamp = new Date().toISOString();
       const qty = Number(data.qty ?? 1);
       const unit_price = Number(data.unit_price ?? data.amount_net ?? 0);
@@ -485,8 +557,8 @@ class JsonDatabase {
         id: uuidv4(),
         project_id: data.project_id,
         date: data.date ?? timestamp.slice(0, 10),
-        phase_id: data.phase_id,
-        subphase_id: data.subphase_id,
+        phase_id,
+        subphase_id,
         contractor_id: data.contractor_id,
         description,
         title: data.title ?? description,
@@ -518,11 +590,12 @@ class JsonDatabase {
     return this.withLock(async () => {
       const idx = this.state!.costs.findIndex((c) => c.id === id);
       if (idx === -1) return null;
-      this.assertRelations(data);
-
       const existing = this.state!.costs[idx];
-      const phase_id = data.phase_id ?? existing.phase_id;
+      const { phase_id, subphase_id } = this.resolvePhasing({ ...existing, ...data });
+      this.assertRelations({ ...data, phase_id, subphase_id });
+
       const contractor_id = data.contractor_id ?? existing.contractor_id;
+      if (!subphase_id) throw new Error('Podfaza je obvezna');
       if (!phase_id || !contractor_id) throw new Error('Faza in izvajalec sta obvezna');
       const qty = Number(data.qty ?? existing.qty);
       const unit_price = Number(data.unit_price ?? existing.unit_price);
@@ -533,6 +606,7 @@ class JsonDatabase {
         ...existing,
         ...data,
         phase_id,
+        subphase_id,
         contractor_id,
         qty,
         unit_price,
@@ -585,8 +659,10 @@ class JsonDatabase {
     await this.withLock(async () => {
       for (const entry of entries) {
         if (!entry.project_id) throw new Error('Projekt je obvezen');
-        if (!entry.phase_id || !entry.contractor_id) throw new Error('Faza in izvajalec sta obvezna');
-        this.assertRelations(entry);
+        if (!entry.contractor_id) throw new Error('Izvajalec je obvezen');
+        const { phase_id, subphase_id } = this.resolvePhasing(entry);
+        if (!phase_id || !subphase_id) throw new Error('Podfaza je obvezna');
+        this.assertRelations({ ...entry, phase_id, subphase_id });
         const timestamp = new Date().toISOString();
         const qty = Number(entry.qty ?? 1);
         const unit_price = Number(entry.unit_price ?? entry.amount_net ?? 0);
@@ -596,8 +672,8 @@ class JsonDatabase {
           id: uuidv4(),
           project_id: entry.project_id,
           date: entry.date ?? timestamp.slice(0, 10),
-          phase_id: entry.phase_id,
-          subphase_id: entry.subphase_id,
+          phase_id,
+          subphase_id,
           contractor_id: entry.contractor_id,
           description,
           title: entry.title ?? description,
@@ -738,6 +814,77 @@ class JsonDatabase {
     return { created: imported, missingPhases: [], missingContractors: [] };
   }
 
+  async importPhasesCsv(csv: string) {
+    await this.init();
+    return this.withLock(async () => {
+      const lines = csv.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      if (!lines.length) throw new Error('CSV je prazen.');
+      const headers = lines[0].split(';').map((h) => h.trim().toLowerCase());
+      const expected = ['glavna_faza_id', 'glavna_faza_naziv', 'podfaza_id', 'podfaza_naziv', 'zaporedje'];
+      if (expected.some((h, idx) => headers[idx] !== h)) {
+        throw new Error(`CSV ni veljaven. Pričakovana glava: ${expected.join(';')}`);
+      }
+
+      const orderHints = new Map<string, number>();
+
+      lines.slice(1).forEach((line, idx) => {
+        const cols = line.split(';');
+        if (cols.length < expected.length) {
+          throw new Error(`Neveljavna vrstica ${idx + 2}: ${line}`);
+        }
+        const [phaseIdRaw, phaseNameRaw, subIdRaw, subNameRaw, orderRaw] = cols.map((c) => c.trim());
+        if (!phaseIdRaw || !phaseNameRaw) {
+          throw new Error(`Manjkajoča glavna faza v vrstici ${idx + 2}.`);
+        }
+        let phase = this.state!.phases.find((p) => p.id === phaseIdRaw);
+        if (!phase) {
+          phase = { id: phaseIdRaw, name: phaseNameRaw, order_no: this.state!.phases.length + 1, budget_planned: 0 };
+          this.state!.phases.push(phase);
+        } else {
+          phase.name = phaseNameRaw;
+        }
+        if (!orderHints.has(phase.id)) {
+          orderHints.set(phase.id, idx + 1);
+        }
+
+        if (!subIdRaw || !subNameRaw) return;
+        const parsedOrder = Number(orderRaw);
+        const siblings = this.state!.subphases.filter((s) => s.main_phase_id === phase.id);
+        const nextOrder = (siblings.reduce((max, s) => Math.max(max, s.order_no), 0) || 0) + 1;
+        const order_no = Number.isFinite(parsedOrder) && parsedOrder > 0 ? parsedOrder : nextOrder;
+
+        const existing = this.state!.subphases.find(
+          (s) => s.id === subIdRaw || (s.main_phase_id === phase!.id && s.name.toLowerCase() === subNameRaw.toLowerCase())
+        );
+        if (existing) {
+          existing.name = subNameRaw;
+          existing.main_phase_id = phase.id;
+          existing.order_no = order_no;
+        } else {
+          this.state!.subphases.push({ id: subIdRaw, main_phase_id: phase.id, name: subNameRaw, order_no });
+        }
+      });
+
+      const sortedPhases = [...this.state!.phases].sort((a, b) => (orderHints.get(a.id) ?? a.order_no) - (orderHints.get(b.id) ?? b.order_no));
+      sortedPhases.forEach((phase, idx) => {
+        phase.order_no = idx + 1;
+      });
+
+      const grouped = this.state!.subphases.reduce<Record<string, Subphase[]>>((acc, sub) => {
+        acc[sub.main_phase_id] = acc[sub.main_phase_id] ?? [];
+        acc[sub.main_phase_id].push(sub);
+        return acc;
+      }, {});
+      Object.values(grouped).forEach((list) => {
+        list.sort((a, b) => a.order_no - b.order_no).forEach((s, idx) => {
+          s.order_no = idx + 1;
+        });
+      });
+
+      await this.persist();
+    });
+  }
+
   async exportBackup(targetPath: string) {
     await this.init();
     await this.withLock(async () => {
@@ -782,7 +929,8 @@ class JsonDatabase {
   async phasePlanVsActual(projectId: string) {
     await this.init();
     const { items } = await this.listCosts({ projectId });
-    return this.state!.phases.map((p) => ({
+    const phases = await this.listPhases();
+    return phases.map((p) => ({
       phase_id: p.id,
       phase_name: p.name,
       planned: Number((p as any).budget_planned ?? 0),

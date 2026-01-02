@@ -1,4 +1,4 @@
-import type { Contractor, Cost, CostInput, CostListResult, Document, Phase, Project, Subphase } from './types';
+import type { Contractor, Cost, CostInput, CostListResult, Document, MainPhase, Project, Subphase } from './types';
 
 declare global {
   interface Window {
@@ -12,15 +12,16 @@ declare global {
         getActive: () => Promise<string | null>;
       };
       phases: {
-        list: () => Promise<Phase[]>;
-        create: (name: string) => Promise<Phase>;
-        update: (id: string, payload: string | { name?: string; budget_planned?: number }) => Promise<Phase | null>;
+        list: () => Promise<MainPhase[]>;
+        create: (payload: { name: string; order_no?: number; id?: string }) => Promise<MainPhase>;
+        update: (id: string, payload: string | { name?: string; budget_planned?: number; order_no?: number }) => Promise<MainPhase | null>;
         remove: (id: string) => Promise<void>;
-        reorder: (order: string[]) => Promise<Phase[]>;
+        reorder: (order: string[]) => Promise<MainPhase[]>;
+        importCsv: (csv: string) => Promise<void>;
         subphases: {
           list: (phaseId: string) => Promise<Subphase[]>;
-          create: (phaseId: string, name: string) => Promise<Subphase>;
-          update: (id: string, name: string) => Promise<Subphase | null>;
+          create: (phaseId: string, payload: { name: string; order_no?: number; id?: string }) => Promise<Subphase>;
+          update: (id: string, payload: { name?: string; order_no?: number; main_phase_id?: string }) => Promise<Subphase | null>;
           remove: (id: string) => Promise<void>;
         };
       };
