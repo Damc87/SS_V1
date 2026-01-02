@@ -17,6 +17,7 @@ export type Contractor = {
   id: string;
   name: string;
   project_id?: string;
+  phase_id?: string;
   tax_id?: string;
   phone?: string;
   email?: string;

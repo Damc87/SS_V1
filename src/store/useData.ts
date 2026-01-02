@@ -16,17 +16,21 @@ export type DataState = {
   loadAll: () => Promise<void>;
   setActiveProject: (id: string) => Promise<void>;
   addProject: (payload: Pick<Project, 'name' | 'description'>) => Promise<Project>;
-  refreshCosts: (filters?: Record<string, unknown>) => Promise<void>;
+  refreshCosts: (filters?: { projectId?: string } & Record<string, unknown>) => Promise<void>;
+  refreshContractors: (projectId?: string) => Promise<void>;
   createCost: (payload: CostInput) => Promise<Cost>;
   updateCost: (id: string, patch: Partial<CostInput>) => Promise<Cost | null>;
   deleteCost: (id: string) => Promise<void>;
   duplicateCost: (id: string) => Promise<Cost | null>;
-  importCosts: (csv: string, projectId: string) => Promise<any>;
+  importCosts: (csv: string, projectId: string) => Promise<unknown>;
   exportCosts: (projectId?: string, filters?: Record<string, unknown>) => Promise<string>;
-  phasePlanVsActual: (projectId?: string) => Promise<any>;
+  phasePlanVsActual: (projectId?: string) => Promise<unknown>;
   refreshDocuments: (projectId: string) => Promise<void>;
   addPhase: (name: string) => Promise<void>;
   updatePhaseBudget: (id: string, budget: number) => Promise<void>;
+  createContractor: (payload: Omit<Contractor, 'id' | 'created_at'>) => Promise<Contractor>;
+  updateContractor: (id: string, patch: Partial<Omit<Contractor, 'id' | 'created_at'>>) => Promise<Contractor | null>;
+  deleteContractor: (id: string) => Promise<void>;
 };
 
 export const useData = create<DataState>((set, get) => ({
@@ -73,11 +77,23 @@ export const useData = create<DataState>((set, get) => ({
       await window.api.projects.setActive(id);
       const { items, total } = (await window.api.costs.list({ projectId: id })) as CostListResult;
       const documents = await window.api.documents.listByProject(id);
-      set({ activeProjectId: id, costs: items, costTotal: total, documents, error: null });
+      const contractors = await window.api.contractors.list({ projectId: id });
+      set({ activeProjectId: id, costs: items, costTotal: total, documents, contractors, error: null });
     } catch (error) {
       console.error('setActiveProject failed', error);
       toast.error('Aktivacija projekta ni uspela.');
       set({ error: (error as Error)?.message ?? 'Napaka' });
+    }
+  },
+  refreshContractors: async (projectId) => {
+    const current = projectId ?? get().activeProjectId;
+    if (!current) return;
+    try {
+      const contractors = await window.api.contractors.list({ projectId: current });
+      set({ contractors });
+    } catch (error) {
+      console.error('refreshContractors failed', error);
+      toast.error('Osvežitev izvajalcev ni uspela.');
     }
   },
   addProject: async (payload) => {
@@ -92,10 +108,10 @@ export const useData = create<DataState>((set, get) => ({
     }
   },
   refreshCosts: async (filters = {}) => {
-    const projectId = (filters as any).projectId ?? get().activeProjectId;
+    const { projectId = get().activeProjectId, ...rest } = filters;
     if (!projectId) return;
     try {
-      const { items, total } = (await window.api.costs.list({ ...filters, projectId })) as CostListResult;
+      const { items, total } = (await window.api.costs.list({ ...rest, projectId })) as CostListResult;
       set({ costs: items, costTotal: total });
     } catch (error) {
       console.error('refreshCosts failed', error);
@@ -216,6 +232,42 @@ export const useData = create<DataState>((set, get) => ({
     } catch (error) {
       console.error('updatePhaseBudget failed', error);
       toast.error('Posodobitev plana ni uspela.');
+    }
+  },
+  createContractor: async (payload) => {
+    try {
+      const contractor = await window.api.contractors.create(payload);
+      await get().refreshContractors(payload.project_id);
+      return contractor;
+    } catch (error) {
+      console.error('createContractor failed', error);
+      toast.error('Shranjevanje izvajalca ni uspelo.');
+      throw error;
+    }
+  },
+  updateContractor: async (id, patch) => {
+    try {
+      const contractor = await window.api.contractors.update(id, patch);
+      if (contractor) {
+        set((state) => ({
+          contractors: state.contractors.map((c) => (c.id === id ? contractor : c)),
+        }));
+      }
+      return contractor;
+    } catch (error) {
+      console.error('updateContractor failed', error);
+      toast.error('Posodobitev izvajalca ni uspela.');
+      throw error;
+    }
+  },
+  deleteContractor: async (id) => {
+    try {
+      await window.api.contractors.remove(id);
+      set((state) => ({ contractors: state.contractors.filter((c) => c.id !== id) }));
+    } catch (error) {
+      console.error('deleteContractor failed', error);
+      toast.error('Brisanje izvajalca ni uspelo.');
+      throw error;
     }
   },
 }));

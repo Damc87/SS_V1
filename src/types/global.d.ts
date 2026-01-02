@@ -25,7 +25,7 @@ declare global {
         };
       };
       contractors: {
-        list: () => Promise<Contractor[]>;
+        list: (filters?: { projectId?: string }) => Promise<Contractor[]>;
         create: (data: Omit<Contractor, 'id' | 'created_at'>) => Promise<Contractor>;
         update: (id: string, data: Partial<Omit<Contractor, 'id' | 'created_at'>>) => Promise<Contractor | null>;
         remove: (id: string) => Promise<void>;
@@ -37,7 +37,7 @@ declare global {
         remove: (id: string) => Promise<void>;
         duplicate: (id: string) => Promise<Cost | null>;
         bulkCreate: (entries: CostInput[]) => Promise<Cost[]>;
-        planVsActual: (projectId: string) => Promise<any>;
+        planVsActual: (projectId: string) => Promise<unknown>;
       };
       documents: {
         attach: (payload: { projectId: string; costId?: string; filePath: string }) => Promise<Document>;
@@ -50,7 +50,7 @@ declare global {
         backup: () => Promise<string | null>;
       };
       import: {
-        csv: (csv: string, projectId: string) => Promise<any>;
+        csv: (csv: string, projectId: string) => Promise<unknown>;
         backup: () => Promise<boolean | null>;
       };
       paths: {
