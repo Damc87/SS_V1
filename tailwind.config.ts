@@ -9,17 +9,25 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        border: '#e5e7eb',
-        background: '#f8fafc',
-        foreground: '#0f172a',
-        muted: '#f1f5f9',
+        border: 'rgb(var(--color-border) / <alpha-value>)',
+        background: 'rgb(var(--color-background) / <alpha-value>)',
+        surface: 'rgb(var(--color-surface) / <alpha-value>)',
+        elevated: 'rgb(var(--color-surface-elevated) / <alpha-value>)',
+        foreground: 'rgb(var(--color-text-primary) / <alpha-value>)',
+        'muted-foreground': 'rgb(var(--color-text-secondary) / <alpha-value>)',
+        muted: 'rgb(var(--color-muted) / <alpha-value>)',
         primary: {
-          DEFAULT: '#5b8def',
-          foreground: '#ffffff',
+          DEFAULT: 'rgb(var(--color-accent) / <alpha-value>)',
+          foreground: 'rgb(var(--color-accent-foreground) / <alpha-value>)',
         },
-        secondary: {
-          DEFAULT: '#eef2ff',
-          foreground: '#1e293b',
+        success: {
+          DEFAULT: 'rgb(var(--color-success) / <alpha-value>)',
+        },
+        warning: {
+          DEFAULT: 'rgb(var(--color-warning) / <alpha-value>)',
+        },
+        danger: {
+          DEFAULT: 'rgb(var(--color-danger) / <alpha-value>)',
         },
       },
       borderRadius: {
@@ -28,8 +36,8 @@ const config: Config = {
         sm: '10px',
       },
       boxShadow: {
-        soft: '0 10px 50px -30px rgba(15,23,42,0.45)',
-        card: '0 12px 40px -20px rgba(15,23,42,0.3)',
+        soft: 'var(--shadow-soft)',
+        card: 'var(--shadow-card)',
       },
     },
   },

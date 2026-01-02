@@ -53,24 +53,24 @@ export function ProjectsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card>
+        <Card className="glass">
           <CardHeader>
             <CardDescription>Skupaj projektov</CardDescription>
-            <CardTitle className="text-2xl">{stats.total}</CardTitle>
+            <CardTitle className="text-3xl">{stats.total}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="glass">
           <CardHeader>
             <CardDescription>Aktivni projekt</CardDescription>
-            <CardTitle className="text-lg">{stats.active}</CardTitle>
+            <CardTitle className="text-xl">{stats.active}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="glass">
           <CardHeader>
             <CardDescription>Arhivirani</CardDescription>
-            <CardTitle className="text-lg">{stats.archived}</CardTitle>
+            <CardTitle className="text-xl">{stats.archived}</CardTitle>
           </CardHeader>
         </Card>
       </div>
@@ -90,19 +90,19 @@ export function ProjectsPage() {
                     <CardHeader>
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <CardDescription className="flex items-center gap-2 text-slate-500">
+                          <CardDescription className="flex items-center gap-2">
                             <MapPin className="h-4 w-4" />
                             Lokacija ni nastavljena
                           </CardDescription>
                           <CardTitle>{project.name}</CardTitle>
                         </div>
                         {isActive && (
-                          <span className="rounded-full bg-slate-900/10 px-3 py-1 text-xs font-semibold text-slate-900">Aktivni</span>
+                          <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-foreground">Aktivni</span>
                         )}
                       </div>
                     </CardHeader>
                     <CardContent className="flex items-center justify-between">
-                      <p className="text-sm text-slate-600">{project.description || 'Ni opisa projekta.'}</p>
+                      <p className="text-sm text-muted-foreground">{project.description || 'Ni opisa projekta.'}</p>
                       {!isActive && (
                         <Button variant="ghost" onClick={() => setActiveProject(project.id)}>
                           Nastavi kot aktivnega
@@ -116,7 +116,7 @@ export function ProjectsPage() {
           </div>
         </TabsContent>
         <TabsContent value="add">
-          <Card>
+          <Card className="glass">
             <CardHeader>
               <CardDescription>Dodaj projekt</CardDescription>
               <CardTitle>Hiter vnos</CardTitle>
@@ -124,7 +124,7 @@ export function ProjectsPage() {
             <CardContent className="space-y-3">
               <Input placeholder="Ime projekta" value={name} onChange={(e) => setName(e.target.value)} />
               <Input placeholder="Opis (opcijsko)" value={description} onChange={(e) => setDescription(e.target.value)} />
-              <div className="flex items-center justify-between rounded-xl bg-muted px-4 py-3 text-sm text-slate-600">
+              <div className="flex items-center justify-between rounded-2xl bg-muted px-4 py-3 text-sm text-muted-foreground shadow-inner">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-amber-500" />
                   Zaenkrat enostaven obrazec – kasneje dodajte faze in proračune.

@@ -30,6 +30,11 @@ Offline-first namizna aplikacija za spremljanje stroškov gradnje. Grajena z Ele
 - Namesti odvisnosti: `npm install`
 - Zaženi razvoj: `npm run dev`
 
+## Tema (light/dark)
+- Tema se privzeto nastavi glede na sistemski `prefers-color-scheme` in se ob spremembi sistema samodejno posodobi.
+- V zgornji orodni vrstici je stikalo (System / Light / Dark); izbira se shrani v `localStorage` (`gradnja-theme`), stanje teme pa se uporablja z atributom `data-theme` na `<html>`.
+- Vsi elementi (sidebar, topbar, kartice, inputi, grafi, tabele, modali) uporabljajo CSS spremenljivke iz `src/styles/index.css`, zato so skladni v obeh temah.
+
 ## Struktura
 - `/electron`: glavni proces, JSON shramba in IPC handlerji
 - `/src`: renderer (React + Tailwind + shadcn-style UI, routing)

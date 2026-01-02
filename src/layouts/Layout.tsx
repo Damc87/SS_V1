@@ -6,12 +6,17 @@ import { Topbar } from '../components/Topbar';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { useData } from '../store/useData';
 import { toast } from 'sonner';
+import { useTheme } from '../store/useTheme';
 
 export const AppLayout = () => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem('sidebar-collapsed') === 'true';
+  });
   const loadAll = useData((s) => s.loadAll);
   const loading = useData((s) => s.loading);
   const location = useLocation();
+  const { initialize } = useTheme();
 
   useEffect(() => {
     loadAll().catch((error) => {
@@ -20,8 +25,16 @@ export const AppLayout = () => {
     });
   }, [loadAll]);
 
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
+  useEffect(() => {
+    window.localStorage.setItem('sidebar-collapsed', collapsed.toString());
+  }, [collapsed]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-slate-50 to-slate-100 text-foreground flex">
+    <div className="min-h-screen bg-background text-foreground flex">
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((prev) => !prev)} />
       <div className="flex-1 flex flex-col min-w-0">
         <Topbar />
@@ -31,7 +44,7 @@ export const AppLayout = () => {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="p-6 sm:p-8 space-y-6"
+            className="p-6 sm:p-8 space-y-8"
           >
             <Outlet />
           </motion.main>

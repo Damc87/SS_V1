@@ -12,9 +12,9 @@ export function LoadingScreen({ message = 'Nalaganje ...', variant = 'page' }: L
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="glass rounded-2xl px-6 py-5 text-center shadow-card"
+      className="glass rounded-3xl px-6 py-5 text-center shadow-card"
     >
-      <div className="flex items-center justify-center gap-3 text-slate-700">
+      <div className="flex items-center justify-center gap-3 text-muted-foreground">
         <Loader2 className="h-5 w-5 animate-spin" />
         <span className="font-medium">{message}</span>
       </div>
@@ -23,14 +23,14 @@ export function LoadingScreen({ message = 'Nalaganje ...', variant = 'page' }: L
 
   if (variant === 'overlay') {
     return (
-      <div className="pointer-events-none fixed inset-0 z-30 flex items-center justify-center bg-gradient-to-br from-white/70 via-slate-50/60 to-white/70">
+      <div className="pointer-events-none fixed inset-0 z-30 flex items-center justify-center bg-gradient-to-br from-background/80 via-surface/70 to-background/80 backdrop-blur">
         {content}
       </div>
     );
   }
 
   return (
-    <div className={cn('min-h-screen bg-gradient-to-br from-white via-slate-50 to-slate-100 flex items-center justify-center')}>
+    <div className={cn('min-h-screen bg-background flex items-center justify-center')}>
       {content}
     </div>
   );

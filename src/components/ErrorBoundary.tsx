@@ -29,15 +29,15 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-gradient-to-br from-white via-slate-50 to-slate-100 flex items-center justify-center px-4">
+        <div className="min-h-screen bg-background flex items-center justify-center px-4">
           <div className="glass max-w-lg w-full rounded-3xl border border-border/70 shadow-card p-8 space-y-4">
             <div className="flex items-start gap-3">
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-red-50 text-red-500 shadow-inner">
                 <AlertCircle className="h-5 w-5" />
               </span>
               <div className="space-y-2 text-left">
-                <div className="text-xl font-semibold text-slate-900">Prišlo je do napake</div>
-                <p className="text-sm text-slate-600">{this.state.message ?? 'Nekaj je šlo narobe. Poskusite znova.'}</p>
+                <div className="text-xl font-semibold text-foreground">Prišlo je do napake</div>
+                <p className="text-sm text-muted-foreground">{this.state.message ?? 'Nekaj je šlo narobe. Poskusite znova.'}</p>
                 <div className="flex items-center gap-3 pt-2">
                   <Button onClick={this.handleReload} variant="primary">
                     Osveži aplikacijo

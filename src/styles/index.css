@@ -3,18 +3,110 @@
 @tailwind utilities;
 
 :root {
+  --color-background: 245 247 251;
+  --color-surface: 255 255 255;
+  --color-surface-elevated: 248 250 252;
+  --color-muted: 238 242 246;
+  --color-border: 227 232 239;
+  --color-text-primary: 11 19 36;
+  --color-text-secondary: 91 100 120;
+  --color-accent: 91 141 239;
+  --color-accent-foreground: 248 250 252;
+  --color-success: 34 197 94;
+  --color-warning: 245 158 11;
+  --color-danger: 239 68 68;
+  --color-focus-ring: rgba(91, 141, 239, 0.45);
+  --color-skeleton: 15 23 42;
+  --shadow-soft: 0 18px 60px -32px rgba(15, 23, 42, 0.28);
+  --shadow-card: 0 18px 70px -38px rgba(15, 23, 42, 0.32);
   color-scheme: light;
 }
 
-body {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #f8fafc;
-  color: #0f172a;
+[data-theme='dark'] {
+  --color-background: 12 20 36;
+  --color-surface: 15 23 42;
+  --color-surface-elevated: 17 28 49;
+  --color-muted: 21 33 53;
+  --color-border: 31 42 61;
+  --color-text-primary: 229 231 235;
+  --color-text-secondary: 156 163 175;
+  --color-accent: 138 162 255;
+  --color-accent-foreground: 11 18 32;
+  --color-success: 52 211 153;
+  --color-warning: 251 191 36;
+  --color-danger: 248 113 113;
+  --color-focus-ring: rgba(138, 162, 255, 0.35);
+  --color-skeleton: 255 255 255;
+  --shadow-soft: 0 20px 70px -34px rgba(0, 0, 0, 0.65);
+  --shadow-card: 0 22px 80px -42px rgba(0, 0, 0, 0.7);
+  color-scheme: dark;
 }
 
-.glass {
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  box-shadow: 0 20px 70px -45px rgba(15, 23, 42, 0.35);
+@layer base {
+  * {
+    @apply border-border;
+    transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease, fill 120ms ease,
+      box-shadow 120ms ease;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: radial-gradient(circle at 10% 20%, rgba(var(--color-accent), 0.08), transparent 25%),
+      radial-gradient(circle at 80% 0%, rgba(15, 23, 42, 0.04), transparent 30%),
+      rgb(var(--color-background));
+    color: rgb(var(--color-text-primary));
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, rgb(var(--color-accent)) 28%, transparent);
+    color: rgb(var(--color-accent-foreground));
+  }
+
+  [data-theme='dark'] body {
+    background: radial-gradient(circle at 12% 20%, rgba(var(--color-accent), 0.08), transparent 28%),
+      radial-gradient(circle at 80% 0%, rgba(12, 20, 36, 0.5), transparent 38%),
+      rgb(var(--color-background));
+  }
+}
+
+@layer components {
+  .glass {
+    background: color-mix(in srgb, rgb(var(--color-surface)) 90%, transparent);
+    backdrop-filter: blur(12px);
+    border: 1px solid color-mix(in srgb, rgb(var(--color-border)) 80%, transparent);
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: rgba(var(--color-skeleton), 0.08);
+  }
+
+  .skeleton::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
 }

@@ -1,9 +1,10 @@
 import { useRef } from 'react';
-import { Inbox } from 'lucide-react';
+import { Inbox, Upload } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { useData } from '../../store/useData';
 import { toast } from 'sonner';
 import { EmptyState } from '../../components/EmptyState';
+import { Button } from '../../components/ui/button';
 
 export function DocumentsPage() {
   const { documents, activeProjectId, refreshDocuments } = useData();
@@ -32,20 +33,27 @@ export function DocumentsPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <Card>
+    <div className="space-y-6">
+      <Card className="glass">
         <CardHeader>
           <CardDescription>Dokumenti</CardDescription>
           <CardTitle>Priloženi PDF</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-col items-start justify-between gap-2 pb-2 sm:flex-row sm:items-center">
-            <div className="text-sm text-slate-600">Shranjeno v: userData/uploads</div>
+            <div className="text-sm text-muted-foreground">Shranjeno v: userData/uploads</div>
             <div className="flex items-center gap-2">
               <input ref={inputRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => void handleUpload(e.target.files)} />
-              <button className="px-4 py-2 rounded-xl bg-primary text-white shadow-soft text-sm" onClick={() => inputRef.current?.click()} disabled={!activeProjectId}>
+              <Button
+                variant="primary"
+                size="md"
+                className="gap-2 shadow-soft"
+                onClick={() => inputRef.current?.click()}
+                disabled={!activeProjectId}
+              >
+                <Upload className="h-4 w-4" />
                 Naloži PDF
-              </button>
+              </Button>
             </div>
           </div>
           {!documents.length ? (
@@ -53,14 +61,14 @@ export function DocumentsPage() {
           ) : (
             <div className="space-y-2">
               {documents.map((d) => (
-                <div key={d.id} className="flex items-center justify-between rounded-xl border border-border bg-white px-3 py-2">
+                <div key={d.id} className="flex items-center justify-between rounded-2xl border border-border bg-elevated/80 px-3 py-2">
                   <div>
                     <div className="font-medium">{d.original_name}</div>
-                    <div className="text-xs text-slate-500">{(d.size / 1024).toFixed(1)} kB</div>
+                    <div className="text-xs text-muted-foreground">{(d.size / 1024).toFixed(1)} kB</div>
                   </div>
-                  <button className="px-3 py-1 rounded-lg bg-muted text-sm" onClick={() => void openDoc(d.stored_path)}>
+                  <Button variant="secondary" size="sm" onClick={() => void openDoc(d.stored_path)}>
                     Odpri
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>

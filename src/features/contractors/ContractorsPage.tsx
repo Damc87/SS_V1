@@ -12,8 +12,8 @@ export function ContractorsPage() {
   const filtered = contractors.filter((c) => c.name.toLowerCase().includes(filter.toLowerCase()));
 
   return (
-    <div className="space-y-4">
-      <Card>
+    <div className="space-y-6">
+      <Card className="glass">
         <CardHeader>
           <CardDescription>Izvajalci</CardDescription>
           <CardTitle>Upravljanje izvajalcev</CardTitle>
@@ -28,10 +28,10 @@ export function ContractorsPage() {
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
               {filtered.map((c) => (
-                <div key={c.id} className="rounded-2xl border border-border bg-white/80 p-4 shadow-inner">
-                  <div className="text-base font-semibold text-slate-900">{c.name}</div>
-                  {c.email && <div className="text-sm text-slate-600">{c.email}</div>}
-                  {c.phone && <div className="text-sm text-slate-600">{c.phone}</div>}
+                <div key={c.id} className="rounded-2xl border border-border bg-elevated/80 p-4 shadow-inner">
+                  <div className="text-base font-semibold text-foreground">{c.name}</div>
+                  {c.email && <div className="text-sm text-muted-foreground">{c.email}</div>}
+                  {c.phone && <div className="text-sm text-muted-foreground">{c.phone}</div>}
                 </div>
               ))}
             </div>
