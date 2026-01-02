@@ -21,15 +21,20 @@ export function ContractorsPage() {
         <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row">
             <Input className="sm:max-w-xs" placeholder="Išči" value={filter} onChange={(e) => setFilter(e.target.value)} />
-            <Button variant="secondary">Dodaj izvajalca</Button>
+            <Button variant="secondary" className="shadow-soft">
+              Dodaj izvajalca
+            </Button>
           </div>
           {!filtered.length ? (
             <EmptyState title="Ni izvajalcev" description="Dodajte izvajalca in kontaktne podatke za popolnejši pregled." icon={<PhoneCall className="h-5 w-5" />} />
           ) : (
             <div className="grid gap-3 md:grid-cols-2">
               {filtered.map((c) => (
-                <div key={c.id} className="rounded-2xl border border-border bg-elevated/80 p-4 shadow-inner">
-                  <div className="text-base font-semibold text-foreground">{c.name}</div>
+                <div key={c.id} className="rounded-2xl border border-border/70 bg-elevated/80 p-4 shadow-inner">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-base font-semibold text-foreground">{c.name}</div>
+                    <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-foreground">ID {c.id.slice(0, 4)}</span>
+                  </div>
                   {c.email && <div className="text-sm text-muted-foreground">{c.email}</div>}
                   {c.phone && <div className="text-sm text-muted-foreground">{c.phone}</div>}
                 </div>

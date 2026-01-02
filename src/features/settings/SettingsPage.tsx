@@ -20,7 +20,7 @@ export function SettingsPage() {
             <Input className="sm:max-w-[160px]" defaultValue="22" type="number" />
           </div>
           <div className="flex flex-wrap gap-2 pt-2">
-            <Button variant="primary">Izvozi backup</Button>
+            <Button variant="primary" className="shadow-soft">Izvozi backup</Button>
             <Button variant="outline">Uvozi backup</Button>
           </div>
         </CardContent>

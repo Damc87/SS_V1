@@ -9,25 +9,26 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        border: 'rgb(var(--color-border) / <alpha-value>)',
-        background: 'rgb(var(--color-background) / <alpha-value>)',
-        surface: 'rgb(var(--color-surface) / <alpha-value>)',
-        elevated: 'rgb(var(--color-surface-elevated) / <alpha-value>)',
-        foreground: 'rgb(var(--color-text-primary) / <alpha-value>)',
-        'muted-foreground': 'rgb(var(--color-text-secondary) / <alpha-value>)',
-        muted: 'rgb(var(--color-muted) / <alpha-value>)',
+        border: 'rgb(var(--border) / <alpha-value>)',
+        background: 'rgb(var(--bg) / <alpha-value>)',
+        surface: 'rgb(var(--surface) / <alpha-value>)',
+        elevated: 'rgb(var(--surface2) / <alpha-value>)',
+        foreground: 'rgb(var(--text) / <alpha-value>)',
+        'muted-foreground': 'rgb(var(--text2) / <alpha-value>)',
+        muted: 'rgb(var(--muted) / <alpha-value>)',
         primary: {
-          DEFAULT: 'rgb(var(--color-accent) / <alpha-value>)',
-          foreground: 'rgb(var(--color-accent-foreground) / <alpha-value>)',
+          DEFAULT: 'rgb(var(--accent) / <alpha-value>)',
+          foreground: 'rgb(var(--surface) / <alpha-value>)',
+          soft: 'rgb(var(--accent2) / <alpha-value>)',
         },
         success: {
-          DEFAULT: 'rgb(var(--color-success) / <alpha-value>)',
+          DEFAULT: 'rgb(var(--success) / <alpha-value>)',
         },
         warning: {
-          DEFAULT: 'rgb(var(--color-warning) / <alpha-value>)',
+          DEFAULT: 'rgb(var(--warn) / <alpha-value>)',
         },
         danger: {
-          DEFAULT: 'rgb(var(--color-danger) / <alpha-value>)',
+          DEFAULT: 'rgb(var(--danger) / <alpha-value>)',
         },
       },
       borderRadius: {
@@ -36,8 +37,11 @@ const config: Config = {
         sm: '10px',
       },
       boxShadow: {
-        soft: 'var(--shadow-soft)',
-        card: 'var(--shadow-card)',
+        soft: 'var(--shadow)',
+        card: '0 18px 60px -38px rgba(15, 23, 42, 0.45)',
+      },
+      transitionTimingFunction: {
+        'smooth-quad': 'cubic-bezier(0.33, 1, 0.68, 1)',
       },
     },
   },

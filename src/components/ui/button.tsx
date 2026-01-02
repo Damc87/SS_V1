@@ -3,11 +3,15 @@ import { Slot } from '@radix-ui/react-slot';
 import { cn } from '../../lib/utils';
 
 const variantStyles = {
-  default: 'bg-foreground text-background shadow-soft hover:shadow-card',
-  primary: 'bg-primary text-primary-foreground shadow-soft hover:shadow-card',
-  secondary: 'bg-surface text-foreground border border-border hover:-translate-y-[1px] shadow-soft/40',
-  outline: 'border border-border bg-transparent text-foreground hover:bg-muted',
-  ghost: 'text-muted-foreground hover:bg-muted/80',
+  default:
+    'bg-foreground text-background shadow-soft hover:-translate-y-[1px] hover:shadow-card active:translate-y-0 focus-visible:ring-offset-0',
+  primary:
+    'bg-gradient-to-r from-primary to-primary-soft text-primary-foreground shadow-soft hover:-translate-y-[1px] hover:shadow-card active:translate-y-0',
+  secondary:
+    'border border-border/80 bg-surface text-foreground shadow-soft hover:-translate-y-[1px] hover:border-border hover:shadow-card',
+  outline:
+    'border border-border/80 bg-transparent text-foreground hover:bg-muted/70 hover:-translate-y-[1px] active:translate-y-0',
+  ghost: 'text-muted-foreground hover:bg-muted/70',
 };
 
 const sizeStyles = {
@@ -28,7 +32,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <Comp
         className={cn(
-          'inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:cursor-not-allowed',
+          'inline-flex items-center justify-center gap-2 rounded-2xl font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-50 disabled:cursor-not-allowed',
           variantStyles[variant],
           sizeStyles[size],
           className

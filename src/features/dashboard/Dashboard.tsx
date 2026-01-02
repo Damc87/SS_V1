@@ -70,17 +70,13 @@ export function Dashboard() {
     <div className="space-y-8">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {kpis.map((kpi) => (
-          <Card key={kpi.label} className="relative overflow-hidden">
-            <div className="absolute right-4 top-4 h-10 w-10 rounded-2xl bg-primary/10 blur-2xl" aria-hidden />
-            <CardHeader className="space-y-3">
-              <CardDescription className="text-xs uppercase tracking-[0.08em] text-muted-foreground">{kpi.label}</CardDescription>
+          <Card key={kpi.label} className="relative overflow-hidden border border-border/80 bg-gradient-to-br from-surface/90 via-surface to-elevated/90">
+            <div className="absolute right-4 top-4 h-12 w-12 rounded-3xl bg-primary/15 blur-3xl" aria-hidden />
+            <CardHeader className="space-y-4">
+              <CardDescription className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{kpi.label}</CardDescription>
               <div className="space-y-1">
-                {loading ? (
-                  <div className="h-8 w-32 rounded-lg skeleton" />
-                ) : (
-                  <CardTitle className="text-3xl leading-tight">{kpi.value}</CardTitle>
-                )}
-                <p className={cn('text-sm font-semibold', kpi.accent)}>{loading || !hasCosts ? '—' : kpi.hint}</p>
+                {loading ? <div className="h-10 w-32 rounded-lg skeleton" /> : <CardTitle className="text-3xl leading-tight">{kpi.value}</CardTitle>}
+                <p className={cn('text-sm font-semibold text-muted-foreground', kpi.accent)}>{loading || !hasCosts ? '—' : kpi.hint}</p>
               </div>
             </CardHeader>
           </Card>
