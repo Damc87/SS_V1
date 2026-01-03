@@ -32,17 +32,17 @@ export function CostsByPhaseChart() {
         <BarChart data={data} barSize={26} margin={{ top: 12, bottom: 24, left: 12, right: 12 }}>
           <defs>
             <linearGradient id="phaseBarGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#d8b4fe" stopOpacity={0.95} />
-              <stop offset="55%" stopColor="#93c5fd" stopOpacity={0.86} />
-              <stop offset="100%" stopColor="#0ea5e9" stopOpacity={0.72} />
+              <stop offset="0%" stopColor="#ffe77a" stopOpacity={0.95} />
+              <stop offset="45%" stopColor="#f7c948" stopOpacity={0.86} />
+              <stop offset="100%" stopColor="#f59e0b" stopOpacity={0.78} />
             </linearGradient>
             <linearGradient id="phaseGlow" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="rgba(255,255,255,0.09)" />
-              <stop offset="50%" stopColor="rgba(255,255,255,0.03)" />
-              <stop offset="100%" stopColor="rgba(255,255,255,0.12)" />
+              <stop offset="0%" stopColor="rgba(255,255,255,0.12)" />
+              <stop offset="50%" stopColor="rgba(255,255,255,0.04)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0.14)" />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="2 10" stroke="url(#phaseGlow)" opacity={0.45} vertical={false} />
+          <CartesianGrid strokeDasharray="2 10" stroke="url(#phaseGlow)" opacity={0.52} vertical={false} />
           <XAxis
             dataKey="name"
             tickLine={false}
@@ -52,31 +52,34 @@ export function CostsByPhaseChart() {
             angle={-14}
             textAnchor="end"
             height={64}
+            tick={{ fontSize: 12, fill: 'rgba(var(--text2),0.92)' }}
           />
           <YAxis
             tickLine={false}
             axisLine={false}
             stroke="rgb(var(--text2))"
+            tick={{ fontSize: 12, fill: 'rgba(var(--text2),0.92)' }}
             tickFormatter={(value: number) => value.toLocaleString('sl-SI', { maximumFractionDigits: 0 })}
           />
           <Tooltip
             contentStyle={{
-              background: 'linear-gradient(135deg, rgba(22,24,40,0.95), rgba(26,32,60,0.92))',
+              background: 'linear-gradient(150deg, rgba(12,14,26,0.96), rgba(22,32,48,0.94))',
               border: `1px solid rgba(255,255,255,0.08)`,
               borderRadius: 16,
-              boxShadow: '0 15px 80px rgba(0,0,0,0.45)',
-              backdropFilter: 'blur(12px)',
+              boxShadow: '0 20px 90px rgba(0,0,0,0.55)',
+              backdropFilter: 'blur(14px)',
             }}
-            labelStyle={{ color: 'rgba(255,255,255,0.72)', fontWeight: 600 }}
+            labelStyle={{ color: 'rgba(255,255,255,0.74)', fontWeight: 600 }}
             formatter={(value: number) => [`€ ${value.toLocaleString('sl-SI', { minimumFractionDigits: 2 })}`, 'Stroški faze']}
-            cursor={{ fill: 'rgba(14,165,233,0.12)', opacity: 0.32 }}
+            cursor={{ fill: 'rgba(255,231,122,0.08)', opacity: 0.5 }}
           />
           <Bar
             dataKey="value"
             fill={hasData ? 'url(#phaseBarGradient)' : 'rgba(var(--accent),0.28)'}
             radius={[16, 16, 12, 12]}
-            stroke="rgba(255,255,255,0.12)"
+            stroke="rgba(255,255,255,0.2)"
             strokeWidth={1}
+            background={{ fill: 'rgba(255,255,255,0.03)', radius: 14 }}
           />
         </BarChart>
       </ResponsiveContainer>
