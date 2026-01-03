@@ -7,6 +7,12 @@ import { buildPhaseColorMap, getPhaseColor, withAlpha } from '../../lib/phaseCol
 
 export function CostsByPhaseChart() {
   const { costs, phases, subphases } = useData();
+  const pastelYellow = 'rgba(var(--pastel-yellow), 0.9)';
+  const labelFont = {
+    fontSize: 12,
+    fill: pastelYellow,
+    fontFamily: '"Space Grotesk", "Inter", system-ui, -apple-system, sans-serif',
+  };
 
   const subphaseToMain = useMemo(() => {
     const map = new Map<string, string>();
@@ -53,7 +59,7 @@ export function CostsByPhaseChart() {
     return (
       <div className="glass rounded-2xl border border-border/70 px-3 py-2 text-xs shadow-card">
         <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground/80">{item.payload.name}</div>
-        <div className="text-sm font-semibold text-foreground">{`€ ${Number(item.value ?? 0).toLocaleString('sl-SI', { minimumFractionDigits: 2 })}`}</div>
+        <div className="text-sm font-semibold text-[rgb(var(--pastel-yellow))]">{`€ ${Number(item.value ?? 0).toLocaleString('sl-SI', { minimumFractionDigits: 2 })}`}</div>
       </div>
     );
   };
@@ -61,30 +67,37 @@ export function CostsByPhaseChart() {
   return (
     <div className="h-80">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} barSize={30} margin={{ top: 12, bottom: 24, left: 8, right: 8 }}>
-          <CartesianGrid strokeDasharray="2 12" stroke="rgba(255,255,255,0.06)" vertical={false} />
+        <BarChart data={data} barSize={39} margin={{ top: 12, bottom: 24, left: 8, right: 8 }}>
+          <CartesianGrid strokeDasharray="4 6" stroke="rgba(var(--pastel-yellow),0.24)" strokeWidth={1.1} vertical={false} />
           <XAxis
             dataKey="name"
             tickLine={false}
             axisLine={false}
-            stroke="rgb(var(--text2))"
+            stroke="rgb(var(--pastel-yellow))"
             interval={0}
             angle={-14}
             textAnchor="end"
             height={64}
-            tick={{ fontSize: 12, fill: 'rgba(var(--text2),0.75)' }}
+            tick={labelFont}
+            tickMargin={12}
           />
           <YAxis
             tickLine={false}
             axisLine={false}
-            stroke="rgb(var(--text2))"
-            tick={{ fontSize: 12, fill: 'rgba(var(--text2),0.75)' }}
+            stroke="rgb(var(--pastel-yellow))"
+            tick={labelFont}
             tickFormatter={(value: number) => `€ ${value.toLocaleString('sl-SI', { maximumFractionDigits: 0 })}`}
           />
           <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} content={tooltipContent} />
-          <Bar dataKey="value" radius={[18, 18, 14, 14]} background={{ fill: 'rgba(255,255,255,0.02)', radius: 14 }}>
+          <Bar dataKey="value" radius={[0, 0, 0, 0]} background={{ fill: 'rgba(var(--pastel-yellow),0.06)', radius: 0 }}>
             {data.map((entry) => (
-              <Cell key={entry.id} fill={withAlpha(entry.color, hasData ? 0.6 : 0.35)} stroke={withAlpha(entry.color, 0.9)} />
+              <Cell
+                key={entry.id}
+                fill={withAlpha(entry.color, hasData ? 0.65 : 0.35)}
+                stroke={withAlpha(entry.color, 0.95)}
+                strokeWidth={1.4}
+                style={{ filter: 'drop-shadow(0 0 12px rgba(var(--pastel-yellow),0.18))' }}
+              />
             ))}
           </Bar>
         </BarChart>
