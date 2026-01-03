@@ -155,8 +155,8 @@ export function Dashboard() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28 }}>
         <Card className="glass-strong neon-border">
           <CardHeader>
-            <CardDescription>Kumulativa</CardDescription>
-            <CardTitle>Mesečni trend</CardTitle>
+            <CardDescription>Mesečni pregled</CardDescription>
+            <CardTitle>Mesečne vrednosti</CardTitle>
           </CardHeader>
           <CardContent>
             <CumulatedLineChart />
