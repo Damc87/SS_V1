@@ -5,6 +5,12 @@ import { EmptyState } from '../../components/EmptyState';
 
 export function TopContractorsChart() {
   const { costs, contractors } = useData();
+  const pastelYellow = 'rgba(var(--pastel-yellow), 0.92)';
+  const labelFont = {
+    fontSize: 13,
+    fill: pastelYellow,
+    fontFamily: '"Space Grotesk", "Inter", system-ui, -apple-system, sans-serif',
+  };
   const data = useMemo(() => {
     const decorated = contractors
       .map((c) => ({
@@ -29,34 +35,41 @@ export function TopContractorsChart() {
   }
 
   return (
-    <div className="h-64">
+    <div className="h-72">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical" margin={{ top: 0, bottom: 0, left: 0, right: 16 }}>
-          <CartesianGrid strokeDasharray="2 10" stroke="rgba(255,255,255,0.07)" opacity={0.6} horizontal={false} />
+          <CartesianGrid strokeDasharray="3 7" stroke="rgba(var(--pastel-yellow),0.2)" strokeWidth={1.05} opacity={0.85} horizontal={false} />
           <XAxis type="number" hide />
           <YAxis
             dataKey="name"
             type="category"
-            width={150}
+            width={170}
             axisLine={false}
             tickLine={false}
-            stroke="rgb(var(--text2))"
-            tick={{ fontSize: 12, fill: 'rgba(var(--text2),0.8)' }}
+            stroke="rgb(var(--pastel-yellow))"
+            tick={labelFont}
           />
           <Tooltip
             contentStyle={{
               background: 'rgba(13,17,32,0.9)',
-              border: `1px solid rgba(255,255,255,0.08)`,
+              border: `1px solid rgba(var(--pastel-yellow),0.18)`,
               borderRadius: 14,
               boxShadow: '0 18px 80px rgba(0,0,0,0.55)',
               backdropFilter: 'blur(14px)',
             }}
             formatter={(value: number) => [`€ ${value.toLocaleString('sl-SI', { minimumFractionDigits: 2 })}`, 'Skupaj']}
-            cursor={{ fill: 'rgba(34,211,238,0.08)', opacity: 0.4 }}
+            labelStyle={{ color: pastelYellow, fontWeight: 700 }}
+            cursor={{ fill: 'rgba(var(--pastel-yellow),0.08)', opacity: 0.8 }}
           />
-          <Bar dataKey="value" radius={[16, 16, 12, 12]} barSize={18}>
+          <Bar dataKey="value" radius={[0, 0, 0, 0]} barSize={20}>
             {data.map((item) => (
-              <Cell key={item.name} fill="rgba(56, 189, 248, 0.6)" stroke="rgba(56, 189, 248, 0.9)" />
+              <Cell
+                key={item.name}
+                fill="rgba(var(--neon-lime),0.6)"
+                stroke="rgba(var(--neon-lime),0.9)"
+                strokeWidth={1.4}
+                style={{ filter: 'drop-shadow(0 0 10px rgba(var(--neon-lime),0.4))' }}
+              />
             ))}
           </Bar>
         </BarChart>
