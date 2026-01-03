@@ -44,6 +44,8 @@ Offline-first namizna aplikacija za spremljanje stroškov gradnje. Grajena z Ele
 - Tema se privzeto nastavi glede na sistemski `prefers-color-scheme` in se ob spremembi sistema samodejno posodobi.
 - V zgornji orodni vrstici je preklop (System / Light / Dark); izbira se shrani v `localStorage` (`gradnja-theme`), na `<html>` se doda/odstrani razred `dark` (class-based pristop).
 - Vsi elementi (sidebar, topbar, kartice, inputi, grafi, tabele, modali) uporabljajo CSS spremenljivke iz `src/styles/index.css`, zato so skladni v obeh temah.
+- Leva navigacija ima gumb za skrčenje/razširitev; stanje (collapsed/expanded) se shrani v `localStorage` in se ohrani med zagoni.
+- Gumb **Osveži** v zgornji vrstici ponovno naloži projekte, faze, stroške in izvajalce v store brez hard reload-a okna ter pokaže toast “Osveženo”.
 
 ## Struktura
 - `/electron`: glavni proces, JSON shramba in IPC handlerji

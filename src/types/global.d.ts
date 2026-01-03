@@ -41,7 +41,7 @@ declare global {
         bulkCreate: (entries: CostInput[]) => Promise<Cost[]>;
         planVsActual: (projectId: string) => Promise<unknown>;
         setArchived: (id: string, archived: boolean) => Promise<Cost | null>;
-        attachPdf: (costId: string, filePath: string) => Promise<any>;
+        attachPdf: (costId: string, filePath: string) => Promise<Cost['pdf_attachment'] | null>;
         openPdf: (storedPath: string) => Promise<string>;
       };
       documents: {

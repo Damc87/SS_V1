@@ -36,9 +36,9 @@ export function CumulatedLineChart() {
         <AreaChart data={data} margin={{ top: 10, bottom: 12, left: 8, right: 8 }}>
           <defs>
             <linearGradient id="cumulativeGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6ab9ff" stopOpacity={0.95} />
-              <stop offset="45%" stopColor="#3c82f6" stopOpacity={0.8} />
-              <stop offset="100%" stopColor="#1f4b99" stopOpacity={0.35} />
+              <stop offset="0%" stopColor="#4cc9f0" stopOpacity={0.6} />
+              <stop offset="65%" stopColor="#3f37c9" stopOpacity={0.28} />
+              <stop offset="100%" stopColor="#111729" stopOpacity={0.05} />
             </linearGradient>
             <linearGradient id="gridGlow" x1="0" y1="0" x2="1" y2="0">
               <stop offset="0%" stopColor="rgba(255,255,255,0.08)" />

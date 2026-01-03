@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
 
@@ -13,7 +13,7 @@ export function TopContractorsChart() {
       }))
       .filter((d) => d.value > 0)
       .sort((a, b) => b.value - a.value)
-      .slice(0, 5);
+      .slice(0, 8);
     return decorated;
   }, [contractors, costs]);
   const hasData = data.length > 0;
@@ -31,28 +31,34 @@ export function TopContractorsChart() {
   return (
     <div className="h-64">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} layout="vertical">
-          <defs>
-            <linearGradient id="contractorGradient" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#74f2b2" stopOpacity={0.95} />
-              <stop offset="45%" stopColor="#4ad9a8" stopOpacity={0.85} />
-              <stop offset="100%" stopColor="#19b97a" stopOpacity={0.82} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="2 8" stroke="rgba(255,255,255,0.08)" opacity={0.5} horizontal={false} />
+        <BarChart data={data} layout="vertical" margin={{ top: 0, bottom: 0, left: 0, right: 16 }}>
+          <CartesianGrid strokeDasharray="2 10" stroke="rgba(255,255,255,0.07)" opacity={0.6} horizontal={false} />
           <XAxis type="number" hide />
-          <YAxis dataKey="name" type="category" width={140} axisLine={false} tickLine={false} stroke="rgb(var(--text2))" tick={{ fontSize: 12, fill: 'rgba(var(--text2),0.9)' }} />
+          <YAxis
+            dataKey="name"
+            type="category"
+            width={150}
+            axisLine={false}
+            tickLine={false}
+            stroke="rgb(var(--text2))"
+            tick={{ fontSize: 12, fill: 'rgba(var(--text2),0.8)' }}
+          />
           <Tooltip
             contentStyle={{
-              background: 'linear-gradient(150deg, rgba(12,14,26,0.96), rgba(22,32,48,0.94))',
+              background: 'rgba(13,17,32,0.9)',
               border: `1px solid rgba(255,255,255,0.08)`,
-              borderRadius: 16,
-              boxShadow: '0 20px 90px rgba(0,0,0,0.55)',
+              borderRadius: 14,
+              boxShadow: '0 18px 80px rgba(0,0,0,0.55)',
               backdropFilter: 'blur(14px)',
             }}
-            cursor={{ fill: 'rgba(74,242,178,0.08)', opacity: 0.4 }}
+            formatter={(value: number) => [`€ ${value.toLocaleString('sl-SI', { minimumFractionDigits: 2 })}`, 'Skupaj']}
+            cursor={{ fill: 'rgba(34,211,238,0.08)', opacity: 0.4 }}
           />
-          <Bar dataKey="value" fill="url(#contractorGradient)" radius={[14, 14, 10, 10]} />
+          <Bar dataKey="value" radius={[16, 16, 12, 12]} barSize={18}>
+            {data.map((item) => (
+              <Cell key={item.name} fill="rgba(56, 189, 248, 0.6)" stroke="rgba(56, 189, 248, 0.9)" />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>
