@@ -16,19 +16,22 @@ export function CumulatedLineChart() {
   const data = useMemo(() => {
     const totals: Record<string, number> = {};
     costs.filter((c) => !c.is_archived).forEach((c) => {
-      const monthRaw = (c.invoice_month ?? c.invoice_date?.slice(0, 7))?.slice(0, 7);
-      if (!monthRaw) return;
-      totals[monthRaw] = (totals[monthRaw] || 0) + c.amount_gross;
+      const month = (c.invoice_month ?? c.invoice_date?.slice(0, 7))?.slice(0, 7);
+      if (!month) return;
+      totals[month] = (totals[month] || 0) + c.amount_gross;
     });
     const entries = Object.entries(totals).sort(([a], [b]) => (a > b ? 1 : -1));
     return entries.map(([month, value]) => {
       const date = new Date(`${month}-01T00:00:00Z`);
+      const label = Number.isNaN(date.getTime())
+        ? month
+        : Intl.DateTimeFormat('sl-SI', { month: 'short', year: '2-digit' }).format(date);
 
       return { name: label, value };
     });
   }, [costs]);
 
-  const hasData = data.length > 0;
+  const hasData = costs.some((c) => !c.is_archived) && data.length > 0;
 
   if (!hasData) {
     return (
