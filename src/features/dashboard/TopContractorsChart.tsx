@@ -32,19 +32,27 @@ export function TopContractorsChart() {
     <div className="h-64">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical">
-          <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--border))" opacity={0.28} horizontal={false} />
+          <defs>
+            <linearGradient id="contractorGradient" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#74f2b2" stopOpacity={0.95} />
+              <stop offset="45%" stopColor="#4ad9a8" stopOpacity={0.85} />
+              <stop offset="100%" stopColor="#19b97a" stopOpacity={0.82} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="2 8" stroke="rgba(255,255,255,0.08)" opacity={0.5} horizontal={false} />
           <XAxis type="number" hide />
-          <YAxis dataKey="name" type="category" width={140} axisLine={false} tickLine={false} stroke="rgb(var(--text2))" />
+          <YAxis dataKey="name" type="category" width={140} axisLine={false} tickLine={false} stroke="rgb(var(--text2))" tick={{ fontSize: 12, fill: 'rgba(var(--text2),0.9)' }} />
           <Tooltip
             contentStyle={{
-              background: 'rgba(var(--surface),0.95)',
-              border: `1px solid rgb(var(--border))`,
+              background: 'linear-gradient(150deg, rgba(12,14,26,0.96), rgba(22,32,48,0.94))',
+              border: `1px solid rgba(255,255,255,0.08)`,
               borderRadius: 16,
-              boxShadow: 'var(--shadow)',
+              boxShadow: '0 20px 90px rgba(0,0,0,0.55)',
+              backdropFilter: 'blur(14px)',
             }}
-            cursor={{ fill: 'rgb(var(--muted))', opacity: 0.28 }}
+            cursor={{ fill: 'rgba(74,242,178,0.08)', opacity: 0.4 }}
           />
-          <Bar dataKey="value" fill="rgba(var(--accent),0.72)" radius={[14, 14, 10, 10]} />
+          <Bar dataKey="value" fill="url(#contractorGradient)" radius={[14, 14, 10, 10]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
