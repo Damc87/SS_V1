@@ -23,7 +23,7 @@ export function CumulatedLineChart() {
     const entries = Object.entries(totals).sort(([a], [b]) => (a > b ? 1 : -1));
     return entries.map(([month, value]) => {
       const date = new Date(`${month}-01T00:00:00Z`);
-      const label = Number.isNaN(date.getTime()) ? month : Intl.DateTimeFormat('sl-SI', { month: 'short', year: '2-digit' }).format(date);
+
       return { name: label, value };
     });
   }, [costs]);
