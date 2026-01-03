@@ -80,6 +80,18 @@
     background: color-mix(in srgb, rgb(var(--accent)) 26%, transparent);
     color: white;
   }
+
+  /* Improve readability for charts on dark backgrounds */
+  .recharts-text,
+  .recharts-cartesian-axis-tick-value tspan,
+  .recharts-cartesian-axis-tick-value {
+    fill: rgb(var(--pastel-yellow)) !important;
+  }
+
+  .recharts-tooltip-label,
+  .recharts-tooltip-item {
+    color: rgb(var(--pastel-yellow)) !important;
+  }
 }
 
 @layer components {

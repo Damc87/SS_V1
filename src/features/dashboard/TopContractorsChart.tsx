@@ -5,10 +5,11 @@ import { EmptyState } from '../../components/EmptyState';
 
 export function TopContractorsChart() {
   const { costs, contractors } = useData();
-  const pastelYellow = 'rgba(var(--pastel-yellow), 0.92)';
+  const pastelYellow = 'rgb(var(--pastel-yellow))';
   const labelFont = {
     fontSize: 13,
     fill: pastelYellow,
+    fontWeight: 600,
     fontFamily: '"Space Grotesk", "Inter", system-ui, -apple-system, sans-serif',
   };
   const data = useMemo(() => {
