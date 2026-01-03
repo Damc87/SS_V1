@@ -9,6 +9,8 @@ import { EmptyState } from '../../components/EmptyState';
 import { useData } from '../../store/useData';
 import type { Cost, CostInput, Subphase } from '../../types';
 
+type FileWithPath = File & { path?: string };
+
 type CostDraft = {
   phase_id: string;
   subphase_id: string;
@@ -18,7 +20,7 @@ type CostDraft = {
   invoice_date: string;
   invoice_month: string;
   invoice_no: string;
-  pdf?: File | null;
+  pdf?: FileWithPath | null;
 };
 
 const today = new Date().toISOString().slice(0, 10);
@@ -114,7 +116,7 @@ export function CostsPage() {
     };
     try {
       const created = await createCost(payload);
-      const pdfPath = (newDraft.pdf as any)?.path as string | undefined;
+      const pdfPath = newDraft.pdf?.path;
       if (newDraft.pdf && pdfPath) {
         await attachCostPdf(created.id, pdfPath);
       }
@@ -157,7 +159,7 @@ export function CostsPage() {
     };
     try {
       await updateCost(editingId, payload);
-      const pdfPath = (editDraft.pdf as any)?.path as string | undefined;
+      const pdfPath = editDraft.pdf?.path;
       if (editDraft.pdf && pdfPath) {
         await attachCostPdf(editingId, pdfPath);
       }

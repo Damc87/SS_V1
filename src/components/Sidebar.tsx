@@ -24,7 +24,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     <motion.aside
       animate={{ width: collapsed ? 82 : 280 }}
       transition={{ duration: 0.18, ease: [0.33, 1, 0.68, 1] }}
-      className="relative z-20 border-r border-border/80 bg-surface/90 backdrop-blur-xl shadow-[0_22px_80px_-38px_rgba(0,0,0,0.55)]"
+      className="relative z-20 shrink-0 overflow-hidden border-r border-border/80 bg-[#0b0f1a]/85 backdrop-blur-2xl shadow-[0_22px_80px_-38px_rgba(0,0,0,0.55)]"
     >
       <div className="flex items-center justify-between gap-3 px-4 py-5">
         <div className="flex items-center gap-3">
@@ -43,7 +43,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </Button>
       </div>
       <div className="mx-4 mb-2 h-px rounded-full bg-gradient-to-r from-transparent via-border to-transparent" aria-hidden />
-      <nav className="flex flex-col gap-1 px-3 pb-4">
+      <nav className="flex flex-col gap-1 px-3 pb-4" aria-label="Glavna navigacija">
         {items.map((item) => (
           <NavLink
             key={item.id}
@@ -51,7 +51,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             title={collapsed ? item.label : undefined}
             className={({ isActive }) =>
               cn(
-                'group relative flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-muted-foreground transition hover:-translate-y-[1px] hover:bg-muted/70',
+                'group relative flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-semibold text-muted-foreground transition hover:-translate-y-[1px] hover:bg-white/5',
                 isActive
                   ? 'bg-primary/10 text-foreground shadow-soft border border-primary/25 hover:bg-primary/12 dark:bg-primary/15'
                   : 'border border-transparent',
@@ -70,6 +70,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 />
                 <item.icon className="h-5 w-5" />
                 {!collapsed && <span className="truncate">{item.label}</span>}
+                {collapsed && (
+                  <span className="pointer-events-none absolute left-full z-10 ml-3 min-w-[140px] translate-y-0 rounded-xl border border-border/70 bg-[#111629] px-3 py-2 text-xs font-semibold text-foreground opacity-0 shadow-card transition-opacity duration-150 group-hover:opacity-100">
+                    {item.label}
+                  </span>
+                )}
               </>
             )}
           </NavLink>

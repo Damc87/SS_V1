@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { EmptyState } from '../../components/EmptyState';
 
 export function ProjectsPage() {
-  const { projects, activeProjectId, setActiveProject, addProject, deleteProject } = useData();
+  const { projects, activeProjectId, setActiveProject, addProject } = useData();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [tab, setTab] = useState('overview');
