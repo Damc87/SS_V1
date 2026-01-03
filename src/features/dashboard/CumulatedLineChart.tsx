@@ -5,11 +5,12 @@ import { EmptyState } from '../../components/EmptyState';
 
 export function CumulatedLineChart() {
   const { costs } = useData();
-  const pastelYellow = 'rgba(var(--pastel-yellow), 0.92)';
-  const neonYellow = 'rgba(var(--pastel-yellow), 1)';
+  const pastelYellow = 'rgb(var(--pastel-yellow))';
+  const neonYellow = 'rgb(var(--pastel-yellow))';
   const labelFont = {
     fontSize: 12,
     fill: pastelYellow,
+    fontWeight: 600,
     fontFamily: '"Space Grotesk", "Inter", system-ui, -apple-system, sans-serif',
   };
 
