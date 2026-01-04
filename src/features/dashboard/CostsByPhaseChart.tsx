@@ -1,19 +1,13 @@
-import { useMemo } from 'react';
-import type { TooltipProps } from 'recharts';
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { useMemo, useState } from 'react';
+import type { TickProps } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Text, Tooltip, XAxis, YAxis } from 'recharts';
 import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
-import { buildPhaseColorMap, getPhaseColor, withAlpha } from '../../lib/phaseColors';
+import { formatCurrency, getPhaseColor, GlassTooltip, gridStyle, tickLabel, withAlpha, animation, baseColors } from './chartTheme';
 
 export function CostsByPhaseChart() {
   const { costs, phases, subphases } = useData();
-  const pastelYellow = 'rgb(var(--pastel-yellow))';
-  const labelFont = {
-    fontSize: 12,
-    fill: pastelYellow,
-    fontWeight: 600,
-    fontFamily: '"Space Grotesk", "Inter", system-ui, -apple-system, sans-serif',
-  };
+  const [activePhase, setActivePhase] = useState<string | null>(null);
 
   const subphaseToMain = useMemo(() => {
     const map = new Map<string, string>();
@@ -22,8 +16,6 @@ export function CostsByPhaseChart() {
     });
     return map;
   }, [subphases]);
-
-  const colorMap = useMemo(() => buildPhaseColorMap(phases), [phases]);
 
   const data = useMemo(() => {
     const activeCosts = costs.filter((c) => !c.is_archived);
@@ -38,12 +30,10 @@ export function CostsByPhaseChart() {
             return mainPhaseId === p.id;
           })
           .reduce((acc, c) => acc + c.amount_gross, 0),
-        color: colorMap[p.id] ?? getPhaseColor(p.id, p.order_no),
+        color: getPhaseColor(p.id),
       }));
     return values;
-  }, [colorMap, costs, phases, subphaseToMain]);
-  const hasData = data.some((item) => item.value > 0);
-
+  }, [costs, phases, subphaseToMain]);
   if (!data.length) {
     return (
       <EmptyState
@@ -54,52 +44,102 @@ export function CostsByPhaseChart() {
     );
   }
 
-  const tooltipContent = ({ active, payload }: TooltipProps<number, string>) => {
-    if (!active || !payload?.length) return null;
-    const item = payload[0];
+  const truncateLabel = (value: string, max = 14) => (value.length > max ? `${value.slice(0, max - 1)}…` : value);
+
+  const AxisTick = (props: TickProps) => {
+    const label = String(props.payload?.value ?? '');
     return (
-      <div className="glass rounded-2xl border border-border/70 px-3 py-2 text-xs shadow-card">
-        <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground/80">{item.payload.name}</div>
-        <div className="text-sm font-semibold text-[rgb(var(--pastel-yellow))]">{`€ ${Number(item.value ?? 0).toLocaleString('sl-SI', { minimumFractionDigits: 2 })}`}</div>
-      </div>
+      <Text
+        {...props}
+        x={props.x}
+        y={props.y}
+        verticalAnchor="start"
+        textAnchor="middle"
+        className="select-none"
+        style={tickLabel}
+      >
+        <title>{label}</title>
+        {truncateLabel(label)}
+      </Text>
     );
   };
 
   return (
-    <div className="h-80">
+    <div className="relative h-80">
+      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_20%_20%,rgba(139,233,253,0.08),transparent_35%)]" aria-hidden />
+      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_85%_10%,rgba(167,139,250,0.12),transparent_30%)]" aria-hidden />
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} barSize={39} margin={{ top: 12, bottom: 24, left: 8, right: 8 }}>
-          <CartesianGrid strokeDasharray="4 6" stroke="rgba(var(--pastel-yellow),0.24)" strokeWidth={1.1} vertical={false} />
+        <BarChart
+          data={data}
+          barSize={36}
+          barGap={8}
+          margin={{ top: 18, bottom: 22, left: 4, right: 4 }}
+          onMouseLeave={() => setActivePhase(null)}
+        >
+          <defs>
+            {data.map((entry) => (
+              <linearGradient key={entry.id} id={`phase-${entry.id}-gradient`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={withAlpha(entry.color, 0.95)} />
+                <stop offset="100%" stopColor={withAlpha(entry.color, 0.35)} />
+              </linearGradient>
+            ))}
+          </defs>
+          <CartesianGrid {...gridStyle} strokeWidth={1} vertical={false} />
           <XAxis
             dataKey="name"
             tickLine={false}
             axisLine={false}
-            stroke="rgb(var(--pastel-yellow))"
             interval={0}
-            angle={-14}
-            textAnchor="end"
-            height={64}
-            tick={labelFont}
-            tickMargin={12}
+            tick={<AxisTick />}
+            height={56}
+            tickMargin={14}
+            padding={{ left: 14, right: 14 }}
           />
           <YAxis
             tickLine={false}
             axisLine={false}
-            stroke="rgb(var(--pastel-yellow))"
-            tick={labelFont}
+            stroke={baseColors.axis}
+            tick={tickLabel}
             tickFormatter={(value: number) => `€ ${value.toLocaleString('sl-SI', { maximumFractionDigits: 0 })}`}
+            width={72}
           />
-          <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} content={tooltipContent} />
-          <Bar dataKey="value" radius={[0, 0, 0, 0]} background={{ fill: 'rgba(var(--pastel-yellow),0.06)', radius: 0 }}>
-            {data.map((entry) => (
-              <Cell
-                key={entry.id}
-                fill={withAlpha(entry.color, hasData ? 0.65 : 0.35)}
-                stroke={withAlpha(entry.color, 0.95)}
-                strokeWidth={1.4}
-                style={{ filter: 'drop-shadow(0 0 12px rgba(var(--pastel-yellow),0.18))' }}
+          <Tooltip
+            cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+            content={
+              <GlassTooltip<number, string>
+                valueFormatter={(value) => formatCurrency(value ?? 0)}
+                labelFormatter={(label, item) => (item?.payload?.name as string) || String(label ?? '')}
               />
-            ))}
+            }
+          />
+          <Bar
+            dataKey="value"
+            radius={[10, 10, 6, 6]}
+            background={{ fill: 'rgba(255,255,255,0.02)', radius: [10, 10, 6, 6] }}
+            {...animation}
+          >
+            {data.map((entry) => {
+              const isMuted = entry.value === 0;
+              const isActive = activePhase === entry.id && !isMuted;
+              return (
+                <Cell
+                  key={entry.id}
+                  fill={`url(#phase-${entry.id}-gradient)`}
+                  fillOpacity={isMuted ? 0.2 : isActive ? 0.95 : 0.78}
+                  stroke={withAlpha(entry.color, isMuted ? 0.35 : isActive ? 0.9 : 0.65)}
+                  strokeWidth={isActive ? 2 : 1.2}
+                  className="transition-all duration-200"
+                  style={{
+                    filter: isMuted
+                      ? 'none'
+                      : isActive
+                      ? `drop-shadow(0 8px 22px ${withAlpha(entry.color, 0.36)})`
+                      : `drop-shadow(0 6px 16px ${withAlpha(entry.color, 0.22)})`,
+                  }}
+                  onMouseEnter={() => setActivePhase(entry.id)}
+                />
+              );
+            })}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
