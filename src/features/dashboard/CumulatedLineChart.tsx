@@ -1,18 +1,11 @@
 import { useMemo } from 'react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
+import { animation, baseColors, formatCurrency, GlassTooltip, gridStyle, neonPalette, tickLabel, withAlpha } from './chartTheme';
 
 export function CumulatedLineChart() {
   const { costs } = useData();
-  const pastelYellow = 'rgb(var(--pastel-yellow))';
-  const neonYellow = 'rgb(var(--pastel-yellow))';
-  const labelFont = {
-    fontSize: 12,
-    fill: pastelYellow,
-    fontWeight: 600,
-    fontFamily: '"Space Grotesk", "Inter", system-ui, -apple-system, sans-serif',
-  };
 
   const data = useMemo(() => {
     const totals: Record<string, number> = {};
@@ -45,41 +38,55 @@ export function CumulatedLineChart() {
   }
 
   return (
-    <div className="h-80">
+    <div className="relative h-80">
+      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_18%_22%,rgba(126,160,255,0.15),transparent_32%)]" aria-hidden />
+      <div className="pointer-events-none absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_82%_12%,rgba(244,114,182,0.16),transparent_32%)]" aria-hidden />
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 10, bottom: 18, left: 8, right: 8 }} barCategoryGap="18%">
+        <AreaChart data={data} margin={{ top: 14, bottom: 14, left: 6, right: 6 }}>
           <defs>
-            <linearGradient id="gridGlow" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="rgba(var(--pastel-yellow),0.22)" />
-              <stop offset="50%" stopColor="rgba(var(--pastel-yellow),0.12)" />
-              <stop offset="100%" stopColor="rgba(var(--pastel-yellow),0.28)" />
-            </linearGradient>
-            <linearGradient id="monthlyBars" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="rgba(var(--pastel-yellow),0.95)" />
-              <stop offset="85%" stopColor="rgba(var(--pastel-yellow),0.35)" />
+            <linearGradient id="monthlyArea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={withAlpha(neonPalette[0], 0.9)} />
+              <stop offset="70%" stopColor={withAlpha(neonPalette[0], 0.35)} />
+              <stop offset="100%" stopColor={withAlpha(neonPalette[0], 0.05)} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 6" stroke="url(#gridGlow)" opacity={0.9} vertical={false} />
-          <XAxis dataKey="name" tickLine={false} axisLine={false} stroke="rgb(var(--pastel-yellow))" tick={labelFont} tickMargin={10} />
+          <CartesianGrid {...gridStyle} strokeWidth={1} vertical={false} />
+          <XAxis
+            dataKey="name"
+            tickLine={false}
+            axisLine={false}
+            tick={tickLabel}
+            padding={{ left: data.length === 1 ? 48 : 18, right: data.length === 1 ? 48 : 18 }}
+            tickMargin={12}
+          />
           <YAxis
             tickLine={false}
             axisLine={false}
-            stroke="rgb(var(--pastel-yellow))"
-            tick={labelFont}
+            tick={tickLabel}
             tickFormatter={(value: number) => `€ ${value.toLocaleString('sl-SI', { maximumFractionDigits: 0 })}`}
+            width={82}
           />
           <Tooltip
-            contentStyle={{
-              background: 'linear-gradient(150deg, rgba(12,14,26,0.96), rgba(22,32,48,0.94))',
-              border: `1px solid rgba(var(--pastel-yellow),0.2)`,
-              borderRadius: 16,
-              boxShadow: '0 20px 90px rgba(0,0,0,0.55)',
-              backdropFilter: 'blur(14px)',
-            }}
-            labelStyle={{ color: neonYellow, fontWeight: 700 }}
-            formatter={(value: number) => [`€ ${value.toLocaleString('sl-SI', { minimumFractionDigits: 2 })}`, 'Mesečno']} />
-          <Bar dataKey="value" fill="url(#monthlyBars)" radius={[0, 0, 0, 0]} barSize={36} />
-        </BarChart>
+            cursor={{ stroke: baseColors.axis, strokeWidth: 0.6, opacity: 0.3 }}
+            content={
+              <GlassTooltip<number, string>
+                valueFormatter={(value) => formatCurrency(value ?? 0)}
+                labelFormatter={(label) => String(label ?? '')}
+              />
+            }
+          />
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke={withAlpha(neonPalette[0], 0.95)}
+            fill="url(#monthlyArea)"
+            fillOpacity={0.85}
+            strokeWidth={2.4}
+            dot={false}
+            activeDot={{ r: 6, fill: withAlpha(neonPalette[0], 0.95), strokeWidth: 0 }}
+            {...animation}
+          />
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );

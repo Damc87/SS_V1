@@ -7,6 +7,7 @@ import { TopContractorsChart } from './TopContractorsChart';
 import { CumulatedLineChart } from './CumulatedLineChart';
 import { useData } from '../../store/useData';
 import { cn } from '../../lib/utils';
+import { GlassCard } from './GlassCard';
 
 export function Dashboard() {
   const { costs, contractors, phases, loading, subphases } = useData();
@@ -127,42 +128,36 @@ export function Dashboard() {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-3">
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="xl:col-span-2">
-          <Card className="glass-strong neon-border">
-            <CardHeader>
-              <CardDescription>Stroški po fazah</CardDescription>
-              <CardTitle>Realizacija po glavnih fazah</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <CostsByPhaseChart />
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28 }} className="xl:col-span-1">
-          <Card className="glass-strong neon-border">
-            <CardHeader>
-              <CardDescription>Top izvajalci</CardDescription>
-              <CardTitle>Bruto znesek (top 8)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TopContractorsChart />
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
-
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28 }}>
-        <Card className="glass-strong neon-border">
+        <GlassCard delay={0.18} className="xl:col-span-2">
           <CardHeader>
-            <CardDescription>Mesečni pregled</CardDescription>
-            <CardTitle>Mesečne vrednosti</CardTitle>
+            <CardDescription>Stroški po fazah</CardDescription>
+            <CardTitle>Realizacija po glavnih fazah</CardTitle>
           </CardHeader>
           <CardContent>
-            <CumulatedLineChart />
+            <CostsByPhaseChart />
           </CardContent>
-        </Card>
-      </motion.div>
+        </GlassCard>
+
+        <GlassCard delay={0.24} className="xl:col-span-1">
+          <CardHeader>
+            <CardDescription>Top izvajalci</CardDescription>
+            <CardTitle>Bruto znesek (top 8)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TopContractorsChart />
+          </CardContent>
+        </GlassCard>
+      </div>
+
+      <GlassCard delay={0.26}>
+        <CardHeader>
+          <CardDescription>Mesečni pregled</CardDescription>
+          <CardTitle>Mesečne vrednosti</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CumulatedLineChart />
+        </CardContent>
+      </GlassCard>
     </div>
   );
 }

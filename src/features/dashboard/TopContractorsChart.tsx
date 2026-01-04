@@ -1,17 +1,12 @@
 import { useMemo } from 'react';
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import type { TickProps } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Text, Tooltip, XAxis, YAxis } from 'recharts';
 import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
+import { animation, formatCurrency, GlassTooltip, gridStyle, neonPalette, tickLabel, withAlpha } from './chartTheme';
 
 export function TopContractorsChart() {
   const { costs, contractors } = useData();
-  const pastelYellow = 'rgb(var(--pastel-yellow))';
-  const labelFont = {
-    fontSize: 13,
-    fill: pastelYellow,
-    fontWeight: 600,
-    fontFamily: '"Space Grotesk", "Inter", system-ui, -apple-system, sans-serif',
-  };
   const data = useMemo(() => {
     const decorated = contractors
       .map((c) => ({
@@ -35,41 +30,58 @@ export function TopContractorsChart() {
     );
   }
 
+  const AxisTick = (props: TickProps) => {
+    const label = String(props.payload?.value ?? '');
+    const truncated = label.length > 20 ? `${label.slice(0, 19)}…` : label;
+    return (
+      <Text {...props} className="select-none" style={{ ...tickLabel, fontSize: 13 }}>
+        <title>{label}</title>
+        {truncated}
+      </Text>
+    );
+  };
+
   return (
     <div className="h-72">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} layout="vertical" margin={{ top: 0, bottom: 0, left: 0, right: 16 }}>
-          <CartesianGrid strokeDasharray="3 7" stroke="rgba(var(--pastel-yellow),0.2)" strokeWidth={1.05} opacity={0.85} horizontal={false} />
+        <BarChart data={data} layout="vertical" margin={{ top: 6, bottom: 6, left: 0, right: 18 }} barCategoryGap={14}>
+          <defs>
+            {data.map((item, idx) => (
+              <linearGradient key={item.name} id={`contractor-${idx}-gradient`} x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stopColor={withAlpha(neonPalette[idx % neonPalette.length], 0.9)} />
+                <stop offset="100%" stopColor={withAlpha(neonPalette[(idx + 2) % neonPalette.length], 0.4)} />
+              </linearGradient>
+            ))}
+          </defs>
+          <CartesianGrid {...gridStyle} strokeWidth={1} vertical={false} />
           <XAxis type="number" hide />
           <YAxis
             dataKey="name"
             type="category"
-            width={170}
+            width={180}
             axisLine={false}
             tickLine={false}
-            stroke="rgb(var(--pastel-yellow))"
-            tick={labelFont}
+            tick={<AxisTick />}
           />
           <Tooltip
-            contentStyle={{
-              background: 'rgba(13,17,32,0.9)',
-              border: `1px solid rgba(var(--pastel-yellow),0.18)`,
-              borderRadius: 14,
-              boxShadow: '0 18px 80px rgba(0,0,0,0.55)',
-              backdropFilter: 'blur(14px)',
-            }}
-            formatter={(value: number) => [`€ ${value.toLocaleString('sl-SI', { minimumFractionDigits: 2 })}`, 'Skupaj']}
-            labelStyle={{ color: pastelYellow, fontWeight: 700 }}
-            cursor={{ fill: 'rgba(var(--pastel-yellow),0.08)', opacity: 0.8 }}
+            cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+            content={
+              <GlassTooltip<number, string>
+                valueFormatter={(value) => formatCurrency(value ?? 0)}
+                labelFormatter={(label) => String(label ?? '')}
+              />
+            }
           />
-          <Bar dataKey="value" radius={[0, 0, 0, 0]} barSize={20}>
-            {data.map((item) => (
+          <Bar dataKey="value" radius={[999, 999, 999, 999]} barSize={22} {...animation}>
+            {data.map((item, idx) => (
               <Cell
                 key={item.name}
-                fill="rgba(var(--neon-lime),0.6)"
-                stroke="rgba(var(--neon-lime),0.9)"
-                strokeWidth={1.4}
-                style={{ filter: 'drop-shadow(0 0 10px rgba(var(--neon-lime),0.4))' }}
+                fill={`url(#contractor-${idx}-gradient)`}
+                stroke={withAlpha(neonPalette[idx % neonPalette.length], 0.95)}
+                strokeWidth={1.25}
+                fillOpacity={0.85}
+                className="transition-all duration-200"
+                style={{ filter: `drop-shadow(0 10px 20px ${withAlpha(neonPalette[idx % neonPalette.length], 0.25)})` }}
               />
             ))}
           </Bar>
