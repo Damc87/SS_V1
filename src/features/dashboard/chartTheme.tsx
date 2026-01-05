@@ -11,6 +11,11 @@ const neonPalette = ['#8BE9FD', '#A78BFA', '#7CF5D2', '#7EA0FF', '#FFB86C', '#F4
 
 const hashString = (value: string) => value.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
+const sanitizeLabel = (value: unknown) => {
+  const text = typeof value === 'string' ? value : value == null ? '' : String(value);
+  return text.replace(/\[object Object\],?\s*/gi, '').replace(/\s{2,}/g, ' ').trim();
+};
+
 const withAlpha = (hex: string, alpha: number) => {
   const normalized = hex.replace('#', '');
   const bigint = parseInt(normalized, 16);
@@ -92,4 +97,5 @@ export {
   tickLabel,
   tooltipStyles,
   withAlpha,
+  sanitizeLabel,
 };

@@ -3,7 +3,7 @@ import type { TickProps } from 'recharts';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Text, Tooltip, XAxis, YAxis } from 'recharts';
 import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
-import { formatCurrency, getPhaseColor, GlassTooltip, gridStyle, tickLabel, withAlpha, animation, baseColors } from './chartTheme';
+import { formatCurrency, getPhaseColor, GlassTooltip, gridStyle, tickLabel, withAlpha, animation, baseColors, sanitizeLabel } from './chartTheme';
 
 const pastelGold = '#F4E29C';
 
@@ -24,7 +24,7 @@ export function CostsByPhaseChart() {
     const values = [...phases]
       .sort((a, b) => a.order_no - b.order_no)
       .map((p) => ({
-        name: p.name,
+        name: sanitizeLabel(p.name),
         id: p.id,
         value: activeCosts
           .filter((c) => {
@@ -49,7 +49,7 @@ export function CostsByPhaseChart() {
   const truncateLabel = (value: string, max = 14) => (value.length > max ? `${value.slice(0, max - 1)}…` : value);
 
   const AxisTick = (props: TickProps) => {
-    const label = String(props.payload?.value ?? '');
+    const label = sanitizeLabel(props.payload?.value);
     return (
       <Text
         {...props}
@@ -110,7 +110,7 @@ export function CostsByPhaseChart() {
             content={
               <GlassTooltip<number, string>
                 valueFormatter={(value) => formatCurrency(value ?? 0)}
-                labelFormatter={(label, item) => (item?.payload?.name as string) || String(label ?? '')}
+                labelFormatter={(label, item) => sanitizeLabel(item?.payload?.name ?? label)}
               />
             }
           />

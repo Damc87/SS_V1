@@ -40,19 +40,7 @@ export function Topbar() {
             </div>
           </div>
 
-          <div className="ml-auto flex items-center gap-2 sm:gap-3">
-            <motion.div whileHover={{ y: -1 }}>
-              <Button
-                variant="secondary"
-                size="md"
-                className="gap-2 rounded-2xl border border-accent/30 bg-gradient-to-r from-white/5 via-accent/10 to-white/5 text-foreground shadow-soft"
-                onClick={handleRefresh}
-              >
-                <RefreshCcw className="h-4 w-4 text-accent" />
-                <span className="hidden sm:inline">Osveži</span>
-              </Button>
-            </motion.div>
-
+          <div className="flex flex-1 items-center justify-end gap-2 sm:gap-3">
             <div className="flex items-center gap-1 rounded-full border border-border/70 bg-white/5 px-1.5 py-1 shadow-inner">
               {themeOptions.map((option) => (
                 <button
@@ -79,6 +67,18 @@ export function Topbar() {
             <div className="flex h-11 w-11 items-center justify-center rounded-full border border-border/80 bg-white/5 text-muted-foreground shadow-inner">
               {modeIcon}
             </div>
+
+            <motion.div whileHover={{ y: -1 }}>
+              <Button
+                variant="secondary"
+                size="md"
+                className="gap-2 rounded-2xl border border-accent/30 bg-gradient-to-r from-white/5 via-accent/10 to-white/5 text-foreground shadow-soft"
+                onClick={handleRefresh}
+              >
+                <RefreshCcw className="h-4 w-4 text-accent" />
+                <span className="hidden sm:inline">Osveži</span>
+              </Button>
+            </motion.div>
           </div>
         </div>
       </div>
