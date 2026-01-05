@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
-import { animation, baseColors, GlassTooltip, gridStyle, neonPalette, tickLabel, withAlpha } from './chartTheme';
+import { animation, baseColors, GlassTooltip, gridStyle, neonPalette, safeText, tickLabel, toLabel, withAlpha } from './chartTheme';
 import { formatEUR } from '../../lib/utils';
 
 export function CumulatedLineChart() {
@@ -72,7 +72,7 @@ export function CumulatedLineChart() {
             content={
               <GlassTooltip<number, string>
                 valueFormatter={(value) => formatEUR(value ?? 0)}
-                labelFormatter={(label) => String(label ?? '')}
+                labelFormatter={(label) => safeText(toLabel(label)).trim()}
               />
             }
           />

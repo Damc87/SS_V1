@@ -12,9 +12,23 @@ const neonPalette = ['#8BE9FD', '#A78BFA', '#7CF5D2', '#7EA0FF', '#FFB86C', '#F4
 
 const hashString = (value: string) => value.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
+const toLabel = (v: unknown) => {
+  if (v == null) return '';
+  if (typeof v === 'string' || typeof v === 'number') return String(v);
+  return String(
+    (v as { naziv?: string; name?: string; label?: string; title?: string }).naziv ??
+      (v as { name?: string }).name ??
+      (v as { label?: string }).label ??
+      (v as { title?: string }).title ??
+      ''
+  );
+};
+
+const safeText = (s: unknown) => String(s ?? '').replaceAll('[object Object],', '').replaceAll('[object Object]', '');
+
 const sanitizeLabel = (value: unknown) => {
-  const text = typeof value === 'string' ? value : value == null ? '' : String(value);
-  return text.replace(/\[object Object\],?\s*/gi, '').replace(/\s{2,}/g, ' ').trim();
+  const text = toLabel(value);
+  return safeText(text).replace(/\s{2,}/g, ' ').trim();
 };
 
 const withAlpha = (hex: string, alpha: number) => {
@@ -73,8 +87,9 @@ function GlassTooltip<TValue extends number = number, TName extends string = str
 }: GlassTooltipProps<TValue, TName>) {
   if (!active || !payload?.length) return null;
   const item = payload[0];
-  const title = labelFormatter ? labelFormatter(label, item) : (item?.payload?.name as string) || String(label ?? '');
-  const valueText = valueFormatter ? valueFormatter(item?.value as TValue, item) : String(item?.value ?? '');
+  const titleRaw = labelFormatter ? labelFormatter(label, item) : (item?.payload?.name as string) || label;
+  const title = safeText(toLabel(titleRaw)).trim();
+  const valueText = valueFormatter ? valueFormatter(item?.value as TValue, item) : safeText(toLabel(item?.value ?? '')).trim();
 
   return (
     <div className="rounded-xl border border-white/10 bg-[rgba(15,23,42,0.85)] px-3.5 py-3 text-xs text-slate-100 shadow-[0_22px_90px_rgba(0,0,0,0.55)] backdrop-blur-xl">
@@ -96,4 +111,6 @@ export {
   tooltipStyles,
   withAlpha,
   sanitizeLabel,
+  toLabel,
+  safeText,
 };
