@@ -3,7 +3,7 @@ import type { TickProps } from 'recharts';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Text, Tooltip, XAxis, YAxis } from 'recharts';
 import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
-import { animation, GlassTooltip, gridStyle, neonPalette, safeText, tickLabel, toLabel, withAlpha } from './chartTheme';
+import { animation, GlassTooltip, gridStyle, neonPalette, tickLabel, toLabel, withAlpha } from './chartTheme';
 import { formatEUR } from '../../lib/utils';
 
 export function TopContractorsChart() {
@@ -16,7 +16,7 @@ export function TopContractorsChart() {
     }));
     return raw
       .map((r) => ({
-        izvajalecNaziv: safeText(toLabel(r.izvajalec)).trim(),
+        izvajalecNaziv: toLabel(r.izvajalec).trim(),
         bruto: Number(r.bruto ?? (r as { znesek?: number }).znesek ?? 0),
       }))
       .filter((d) => d.bruto > 0)
@@ -36,7 +36,7 @@ export function TopContractorsChart() {
   }
 
   const AxisTick = (props: TickProps) => {
-    const label = safeText(toLabel(props.payload?.value)).trim();
+    const label = toLabel(props.payload?.value).trim();
     const truncated = label.length > 20 ? `${label.slice(0, 19)}…` : label;
     return (
       <Text {...props} className="select-none" style={{ ...tickLabel, fontSize: 13 }}>
@@ -73,7 +73,7 @@ export function TopContractorsChart() {
             content={
               <GlassTooltip<number, string>
                 valueFormatter={(value) => formatEUR(value ?? 0)}
-                labelFormatter={(label, item) => safeText(toLabel(item?.payload?.izvajalecNaziv ?? label)).trim()}
+                labelFormatter={(label, item) => toLabel(item?.payload?.izvajalecNaziv ?? label).trim()}
               />
             }
           />

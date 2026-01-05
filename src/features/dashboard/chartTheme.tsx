@@ -24,7 +24,7 @@ const toLabel = (v: unknown) => {
   );
 };
 
-const safeText = (s: unknown) => String(s ?? '').replaceAll('[object Object],', '').replaceAll('[object Object]', '');
+const safeText = (s: unknown) => String(s ?? '');
 
 const sanitizeLabel = (value: unknown) => {
   const text = toLabel(value);
