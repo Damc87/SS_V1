@@ -127,23 +127,23 @@ export function Dashboard() {
         ))}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-3">
-        <GlassCard delay={0.18} className="xl:col-span-2">
+      <div className="grid gap-5 xl:grid-cols-[7fr_3fr]">
+        <GlassCard delay={0.18} className="h-full">
           <CardHeader>
             <CardDescription>Stroški po fazah</CardDescription>
             <CardTitle>Realizacija po glavnih fazah</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-full">
             <CostsByPhaseChart />
           </CardContent>
         </GlassCard>
 
-        <GlassCard delay={0.24} className="xl:col-span-1">
+        <GlassCard delay={0.24} className="h-full">
           <CardHeader>
             <CardDescription>Top izvajalci</CardDescription>
             <CardTitle>Bruto znesek (top 8)</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-full">
             <TopContractorsChart />
           </CardContent>
         </GlassCard>
