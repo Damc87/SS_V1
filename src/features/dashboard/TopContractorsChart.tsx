@@ -1,31 +1,29 @@
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import type { TickProps } from 'recharts';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Text, Tooltip, XAxis, YAxis } from 'recharts';
 import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
-import { animation, GlassTooltip, gridStyle, neonPalette, sanitizeLabel, tickLabel, withAlpha } from './chartTheme';
+import { animation, GlassTooltip, gridStyle, neonPalette, safeText, tickLabel, toLabel, withAlpha } from './chartTheme';
 import { formatEUR } from '../../lib/utils';
 
 export function TopContractorsChart() {
   const { costs, contractors } = useData();
-  const resolveContractorName = useCallback((value: unknown) => {
-    const izvajalecNaziv =
-      typeof value === 'string' ? value : (value as { naziv?: string; name?: string })?.naziv ?? (value as { name?: string })?.name ?? '';
-    return sanitizeLabel(izvajalecNaziv);
-  }, []);
 
-  const data = useMemo(() => {
-    const decorated = contractors
-      .map((c) => ({
-        izvajalecNaziv: resolveContractorName(c),
-        value: costs.filter((cost) => !cost.is_archived && cost.contractor_id === c.id).reduce((acc, cost) => acc + cost.amount_gross, 0),
+  const chartData = useMemo(() => {
+    const raw = contractors.map((contractor) => ({
+      izvajalec: contractor,
+      bruto: costs.filter((cost) => !cost.is_archived && cost.contractor_id === contractor.id).reduce((acc, cost) => acc + cost.amount_gross, 0),
+    }));
+    return raw
+      .map((r) => ({
+        izvajalecNaziv: safeText(toLabel(r.izvajalec)).trim(),
+        bruto: Number(r.bruto ?? (r as { znesek?: number }).znesek ?? 0),
       }))
-      .filter((d) => d.value > 0)
-      .sort((a, b) => b.value - a.value)
+      .filter((d) => d.bruto > 0)
+      .sort((a, b) => b.bruto - a.bruto)
       .slice(0, 8);
-    return decorated;
-  }, [contractors, costs, resolveContractorName]);
-  const hasData = data.length > 0;
+  }, [contractors, costs]);
+  const hasData = chartData.length > 0;
 
   if (!hasData) {
     return (
@@ -38,7 +36,7 @@ export function TopContractorsChart() {
   }
 
   const AxisTick = (props: TickProps) => {
-    const label = resolveContractorName(props.payload?.value);
+    const label = safeText(toLabel(props.payload?.value)).trim();
     const truncated = label.length > 20 ? `${label.slice(0, 19)}…` : label;
     return (
       <Text {...props} className="select-none" style={{ ...tickLabel, fontSize: 13 }}>
@@ -51,9 +49,9 @@ export function TopContractorsChart() {
   return (
     <div className="h-80">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} layout="vertical" margin={{ top: 6, bottom: 6, left: 0, right: 18 }} barCategoryGap={14}>
+        <BarChart data={chartData} layout="vertical" margin={{ top: 6, bottom: 6, left: 0, right: 18 }} barCategoryGap={14}>
           <defs>
-            {data.map((item, idx) => (
+            {chartData.map((item, idx) => (
               <linearGradient key={item.izvajalecNaziv} id={`contractor-${idx}-gradient`} x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0%" stopColor={withAlpha(neonPalette[idx % neonPalette.length], 0.9)} />
                 <stop offset="100%" stopColor={withAlpha(neonPalette[(idx + 2) % neonPalette.length], 0.4)} />
@@ -75,12 +73,12 @@ export function TopContractorsChart() {
             content={
               <GlassTooltip<number, string>
                 valueFormatter={(value) => formatEUR(value ?? 0)}
-                labelFormatter={(label) => resolveContractorName(label)}
+                labelFormatter={(label, item) => safeText(toLabel(item?.payload?.izvajalecNaziv ?? label)).trim()}
               />
             }
           />
-          <Bar dataKey="value" radius={[999, 999, 999, 999]} barSize={22} {...animation}>
-            {data.map((item, idx) => (
+          <Bar dataKey="bruto" radius={[999, 999, 999, 999]} barSize={22} {...animation}>
+            {chartData.map((item, idx) => (
               <Cell
                 key={item.izvajalecNaziv}
                 fill={`url(#contractor-${idx}-gradient)`}

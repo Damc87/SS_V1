@@ -3,7 +3,7 @@ import type { TickProps } from 'recharts';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Text, Tooltip, XAxis, YAxis } from 'recharts';
 import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
-import { getPhaseColor, GlassTooltip, gridStyle, tickLabel, withAlpha, animation, baseColors, sanitizeLabel } from './chartTheme';
+import { animation, baseColors, getPhaseColor, GlassTooltip, gridStyle, safeText, tickLabel, toLabel, withAlpha } from './chartTheme';
 import { formatEUR } from '../../lib/utils';
 
 const pastelGold = '#F4E29C';
@@ -25,17 +25,23 @@ export function CostsByPhaseChart() {
     const values = [...phases]
       .sort((a, b) => a.order_no - b.order_no)
       .map((p) => ({
-        name: sanitizeLabel(String((p as { naziv?: string; name?: string }).naziv ?? p.name ?? '')),
-        id: p.id,
-        value: activeCosts
+        faza: p,
+        znesek: activeCosts
           .filter((c) => {
             const mainPhaseId = (c.subphase_id && subphaseToMain.get(c.subphase_id)) || c.phase_id;
             return mainPhaseId === p.id;
           })
           .reduce((acc, c) => acc + c.amount_gross, 0),
+        fazaId: p.id,
         color: getPhaseColor(p.id),
       }));
-    return values;
+    const phaseData = values.map((entry) => ({
+      fazaId: entry.fazaId,
+      fazaNaziv: safeText(toLabel(entry.faza)).trim(),
+      znesek: Number(entry.znesek ?? (entry as { bruto?: number }).bruto ?? 0),
+      color: entry.color,
+    }));
+    return phaseData;
   }, [costs, phases, subphaseToMain]);
   if (!data.length) {
     return (
@@ -50,7 +56,7 @@ export function CostsByPhaseChart() {
   const truncateLabel = (value: string, max = 14) => (value.length > max ? `${value.slice(0, max - 1)}…` : value);
 
   const AxisTick = (props: TickProps) => {
-    const label = sanitizeLabel(String(props.payload?.value ?? ''));
+    const label = safeText(toLabel(props.payload?.value)).trim();
     return (
       <Text
         {...props}
@@ -81,7 +87,7 @@ export function CostsByPhaseChart() {
         >
           <defs>
             {data.map((entry) => (
-              <linearGradient key={entry.id} id={`phase-${entry.id}-gradient`} x1="0" y1="0" x2="0" y2="1">
+              <linearGradient key={entry.fazaId} id={`phase-${entry.fazaId}-gradient`} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor={withAlpha(pastelGold, 0.95)} />
                 <stop offset="100%" stopColor={withAlpha(pastelGold, 0.35)} />
               </linearGradient>
@@ -89,7 +95,7 @@ export function CostsByPhaseChart() {
           </defs>
           <CartesianGrid {...gridStyle} strokeWidth={1} vertical={false} />
           <XAxis
-            dataKey="name"
+            dataKey="fazaNaziv"
             tickLine={false}
             axisLine={false}
             interval={0}
@@ -111,23 +117,23 @@ export function CostsByPhaseChart() {
             content={
               <GlassTooltip<number, string>
                 valueFormatter={(value) => formatEUR(value ?? 0)}
-                labelFormatter={(label, item) => sanitizeLabel(String(item?.payload?.name ?? label ?? ''))}
+                labelFormatter={(label, item) => safeText(toLabel(item?.payload?.fazaNaziv ?? label)).trim()}
               />
             }
           />
           <Bar
-            dataKey="value"
+            dataKey="znesek"
             radius={[10, 10, 6, 6]}
             background={{ fill: 'rgba(255,255,255,0.02)', radius: [10, 10, 6, 6] }}
             {...animation}
           >
             {data.map((entry) => {
-              const isMuted = entry.value === 0;
-              const isActive = activePhase === entry.id && !isMuted;
+              const isMuted = entry.znesek === 0;
+              const isActive = activePhase === entry.fazaId && !isMuted;
               return (
                 <Cell
-                  key={entry.id}
-                  fill={`url(#phase-${entry.id}-gradient)`}
+                  key={entry.fazaId}
+                  fill={`url(#phase-${entry.fazaId}-gradient)`}
                   fillOpacity={isMuted ? 0.2 : isActive ? 0.95 : 0.78}
                   stroke={withAlpha(pastelGold, isMuted ? 0.35 : isActive ? 0.9 : 0.65)}
                   strokeWidth={isActive ? 2 : 1.2}
@@ -139,7 +145,7 @@ export function CostsByPhaseChart() {
                       ? `drop-shadow(0 8px 22px ${withAlpha(pastelGold, 0.36)})`
                       : `drop-shadow(0 6px 16px ${withAlpha(pastelGold, 0.22)})`,
                   }}
-                  onMouseEnter={() => setActivePhase(entry.id)}
+                  onMouseEnter={() => setActivePhase(entry.fazaId)}
                 />
               );
             })}
