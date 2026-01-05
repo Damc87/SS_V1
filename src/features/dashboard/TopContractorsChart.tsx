@@ -3,14 +3,11 @@ import type { TickProps } from 'recharts';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Text, Tooltip, XAxis, YAxis } from 'recharts';
 import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
-import { animation, formatCurrency, GlassTooltip, gridStyle, neonPalette, tickLabel, withAlpha } from './chartTheme';
+import { animation, formatCurrency, GlassTooltip, gridStyle, neonPalette, sanitizeLabel, tickLabel, withAlpha } from './chartTheme';
 
 export function TopContractorsChart() {
   const { costs, contractors } = useData();
-  const sanitizeName = useCallback((value: unknown) => {
-    const text = typeof value === 'string' ? value : value == null ? '' : String(value);
-    return text.replace(/\[object Object\],?\s*/gi, '').trim();
-  }, []);
+  const sanitizeName = useCallback((value: unknown) => sanitizeLabel(value), []);
 
   const data = useMemo(() => {
     const decorated = contractors
