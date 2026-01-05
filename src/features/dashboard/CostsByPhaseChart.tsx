@@ -3,7 +3,7 @@ import type { TickProps } from 'recharts';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Text, Tooltip, XAxis, YAxis } from 'recharts';
 import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
-import { animation, baseColors, getPhaseColor, GlassTooltip, gridStyle, safeText, tickLabel, toLabel, withAlpha } from './chartTheme';
+import { animation, baseColors, getPhaseColor, GlassTooltip, gridStyle, tickLabel, toLabel, withAlpha } from './chartTheme';
 import { formatEUR } from '../../lib/utils';
 
 const pastelGold = '#F4E29C';
@@ -37,7 +37,7 @@ export function CostsByPhaseChart() {
       }));
     const phaseData = values.map((entry) => ({
       fazaId: entry.fazaId,
-      fazaNaziv: safeText(toLabel(entry.faza)).trim(),
+      fazaNaziv: toLabel(entry.faza).trim(),
       znesek: Number(entry.znesek ?? (entry as { bruto?: number }).bruto ?? 0),
       color: entry.color,
     }));
@@ -56,7 +56,7 @@ export function CostsByPhaseChart() {
   const truncateLabel = (value: string, max = 14) => (value.length > max ? `${value.slice(0, max - 1)}…` : value);
 
   const AxisTick = (props: TickProps) => {
-    const label = safeText(toLabel(props.payload?.value)).trim();
+    const label = toLabel(props.payload?.value).trim();
     return (
       <Text
         {...props}
@@ -117,7 +117,7 @@ export function CostsByPhaseChart() {
             content={
               <GlassTooltip<number, string>
                 valueFormatter={(value) => formatEUR(value ?? 0)}
-                labelFormatter={(label, item) => safeText(toLabel(item?.payload?.fazaNaziv ?? label)).trim()}
+                labelFormatter={(label, item) => toLabel(item?.payload?.fazaNaziv ?? label).trim()}
               />
             }
           />
