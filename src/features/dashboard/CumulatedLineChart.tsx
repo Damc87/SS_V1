@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
-import { animation, baseColors, formatCurrency, GlassTooltip, gridStyle, neonPalette, tickLabel, withAlpha } from './chartTheme';
+import { animation, baseColors, GlassTooltip, gridStyle, neonPalette, tickLabel, withAlpha } from './chartTheme';
+import { formatEUR } from '../../lib/utils';
 
 export function CumulatedLineChart() {
   const { costs } = useData();
@@ -63,14 +64,14 @@ export function CumulatedLineChart() {
             tickLine={false}
             axisLine={false}
             tick={tickLabel}
-            tickFormatter={(value: number) => `€ ${value.toLocaleString('sl-SI', { maximumFractionDigits: 0 })}`}
+            tickFormatter={(value: number) => formatEUR(value)}
             width={82}
           />
           <Tooltip
             cursor={{ stroke: baseColors.axis, strokeWidth: 0.6, opacity: 0.3 }}
             content={
               <GlassTooltip<number, string>
-                valueFormatter={(value) => formatCurrency(value ?? 0)}
+                valueFormatter={(value) => formatEUR(value ?? 0)}
                 labelFormatter={(label) => String(label ?? '')}
               />
             }

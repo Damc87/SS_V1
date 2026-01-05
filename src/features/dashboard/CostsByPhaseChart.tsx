@@ -3,7 +3,8 @@ import type { TickProps } from 'recharts';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Text, Tooltip, XAxis, YAxis } from 'recharts';
 import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
-import { formatCurrency, getPhaseColor, GlassTooltip, gridStyle, tickLabel, withAlpha, animation, baseColors, sanitizeLabel } from './chartTheme';
+import { getPhaseColor, GlassTooltip, gridStyle, tickLabel, withAlpha, animation, baseColors, sanitizeLabel } from './chartTheme';
+import { formatEUR } from '../../lib/utils';
 
 const pastelGold = '#F4E29C';
 
@@ -24,7 +25,7 @@ export function CostsByPhaseChart() {
     const values = [...phases]
       .sort((a, b) => a.order_no - b.order_no)
       .map((p) => ({
-        name: sanitizeLabel(p.name),
+        name: sanitizeLabel(String((p as { naziv?: string; name?: string }).naziv ?? p.name ?? '')),
         id: p.id,
         value: activeCosts
           .filter((c) => {
@@ -49,7 +50,7 @@ export function CostsByPhaseChart() {
   const truncateLabel = (value: string, max = 14) => (value.length > max ? `${value.slice(0, max - 1)}…` : value);
 
   const AxisTick = (props: TickProps) => {
-    const label = sanitizeLabel(props.payload?.value);
+    const label = sanitizeLabel(String(props.payload?.value ?? ''));
     return (
       <Text
         {...props}
@@ -102,15 +103,15 @@ export function CostsByPhaseChart() {
             axisLine={false}
             stroke={baseColors.axis}
             tick={tickLabel}
-            tickFormatter={(value: number) => `€ ${value.toLocaleString('sl-SI', { maximumFractionDigits: 0 })}`}
+            tickFormatter={(value: number) => formatEUR(value)}
             width={72}
           />
           <Tooltip
             cursor={{ fill: 'rgba(255,255,255,0.03)' }}
             content={
               <GlassTooltip<number, string>
-                valueFormatter={(value) => formatCurrency(value ?? 0)}
-                labelFormatter={(label, item) => sanitizeLabel(item?.payload?.name ?? label)}
+                valueFormatter={(value) => formatEUR(value ?? 0)}
+                labelFormatter={(label, item) => sanitizeLabel(String(item?.payload?.name ?? label ?? ''))}
               />
             }
           />
