@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { TickProps } from 'recharts';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Text, Tooltip, XAxis, YAxis } from 'recharts';
 import { useData } from '../../store/useData';
@@ -7,17 +7,22 @@ import { animation, formatCurrency, GlassTooltip, gridStyle, neonPalette, tickLa
 
 export function TopContractorsChart() {
   const { costs, contractors } = useData();
+  const sanitizeName = useCallback((value: unknown) => {
+    const text = typeof value === 'string' ? value : value == null ? '' : String(value);
+    return text.replace(/\[object Object\],?\s*/gi, '').trim();
+  }, []);
+
   const data = useMemo(() => {
     const decorated = contractors
       .map((c) => ({
-        name: c.name,
+        name: sanitizeName(c.name),
         value: costs.filter((cost) => !cost.is_archived && cost.contractor_id === c.id).reduce((acc, cost) => acc + cost.amount_gross, 0),
       }))
       .filter((d) => d.value > 0)
       .sort((a, b) => b.value - a.value)
       .slice(0, 8);
     return decorated;
-  }, [contractors, costs]);
+  }, [contractors, costs, sanitizeName]);
   const hasData = data.length > 0;
 
   if (!hasData) {
@@ -31,7 +36,7 @@ export function TopContractorsChart() {
   }
 
   const AxisTick = (props: TickProps) => {
-    const label = String(props.payload?.value ?? '');
+    const label = sanitizeName(props.payload?.value);
     const truncated = label.length > 20 ? `${label.slice(0, 19)}…` : label;
     return (
       <Text {...props} className="select-none" style={{ ...tickLabel, fontSize: 13 }}>
@@ -42,7 +47,7 @@ export function TopContractorsChart() {
   };
 
   return (
-    <div className="h-72">
+    <div className="h-80">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical" margin={{ top: 6, bottom: 6, left: 0, right: 18 }} barCategoryGap={14}>
           <defs>
@@ -68,7 +73,7 @@ export function TopContractorsChart() {
             content={
               <GlassTooltip<number, string>
                 valueFormatter={(value) => formatCurrency(value ?? 0)}
-                labelFormatter={(label) => String(label ?? '')}
+                labelFormatter={(label) => sanitizeName(label)}
               />
             }
           />

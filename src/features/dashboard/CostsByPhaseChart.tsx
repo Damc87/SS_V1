@@ -5,6 +5,8 @@ import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
 import { formatCurrency, getPhaseColor, GlassTooltip, gridStyle, tickLabel, withAlpha, animation, baseColors } from './chartTheme';
 
+const pastelGold = '#F4E29C';
+
 export function CostsByPhaseChart() {
   const { costs, phases, subphases } = useData();
   const [activePhase, setActivePhase] = useState<string | null>(null);
@@ -79,8 +81,8 @@ export function CostsByPhaseChart() {
           <defs>
             {data.map((entry) => (
               <linearGradient key={entry.id} id={`phase-${entry.id}-gradient`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={withAlpha(entry.color, 0.95)} />
-                <stop offset="100%" stopColor={withAlpha(entry.color, 0.35)} />
+                <stop offset="0%" stopColor={withAlpha(pastelGold, 0.95)} />
+                <stop offset="100%" stopColor={withAlpha(pastelGold, 0.35)} />
               </linearGradient>
             ))}
           </defs>
@@ -126,15 +128,15 @@ export function CostsByPhaseChart() {
                   key={entry.id}
                   fill={`url(#phase-${entry.id}-gradient)`}
                   fillOpacity={isMuted ? 0.2 : isActive ? 0.95 : 0.78}
-                  stroke={withAlpha(entry.color, isMuted ? 0.35 : isActive ? 0.9 : 0.65)}
+                  stroke={withAlpha(pastelGold, isMuted ? 0.35 : isActive ? 0.9 : 0.65)}
                   strokeWidth={isActive ? 2 : 1.2}
                   className="transition-all duration-200"
                   style={{
                     filter: isMuted
                       ? 'none'
                       : isActive
-                      ? `drop-shadow(0 8px 22px ${withAlpha(entry.color, 0.36)})`
-                      : `drop-shadow(0 6px 16px ${withAlpha(entry.color, 0.22)})`,
+                      ? `drop-shadow(0 8px 22px ${withAlpha(pastelGold, 0.36)})`
+                      : `drop-shadow(0 6px 16px ${withAlpha(pastelGold, 0.22)})`,
                   }}
                   onMouseEnter={() => setActivePhase(entry.id)}
                 />
