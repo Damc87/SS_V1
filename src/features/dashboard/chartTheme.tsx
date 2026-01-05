@@ -1,4 +1,5 @@
 import type { TooltipPayload, TooltipProps } from 'recharts';
+import { formatEUR } from '../../lib/utils';
 
 const baseColors = {
   background: '#0B0F1A',
@@ -58,9 +59,6 @@ const tooltipStyles = {
   },
 };
 
-const formatCurrency = (value: number, minimumFractionDigits = 2) =>
-  `€ ${value.toLocaleString('sl-SI', { minimumFractionDigits, maximumFractionDigits: Math.max(2, minimumFractionDigits) })}`;
-
 type GlassTooltipProps<TValue extends number = number, TName extends string = string> = TooltipProps<TValue, TName> & {
   labelFormatter?: (label?: string | number, item?: TooltipPayload<TValue, TName>) => string;
   valueFormatter?: (value?: TValue, item?: TooltipPayload<TValue, TName>) => string;
@@ -89,7 +87,7 @@ function GlassTooltip<TValue extends number = number, TName extends string = str
 export {
   animation,
   baseColors,
-  formatCurrency,
+  formatEUR,
   getPhaseColor,
   GlassTooltip,
   gridStyle,

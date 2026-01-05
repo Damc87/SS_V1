@@ -3,16 +3,20 @@ import type { TickProps } from 'recharts';
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Text, Tooltip, XAxis, YAxis } from 'recharts';
 import { useData } from '../../store/useData';
 import { EmptyState } from '../../components/EmptyState';
-import { animation, formatCurrency, GlassTooltip, gridStyle, neonPalette, sanitizeLabel, tickLabel, withAlpha } from './chartTheme';
+import { animation, GlassTooltip, gridStyle, neonPalette, sanitizeLabel, tickLabel, withAlpha } from './chartTheme';
+import { formatEUR } from '../../lib/utils';
 
 export function TopContractorsChart() {
   const { costs, contractors } = useData();
-  const sanitizeName = useCallback((value: unknown) => sanitizeLabel(value), []);
+  const sanitizeName = useCallback(
+    (value: unknown) => sanitizeLabel(String((value as { naziv?: string; name?: string })?.naziv ?? (value as { name?: string })?.name ?? value ?? '')),
+    []
+  );
 
   const data = useMemo(() => {
     const decorated = contractors
       .map((c) => ({
-        name: sanitizeName(c.name),
+        name: sanitizeName(c),
         value: costs.filter((cost) => !cost.is_archived && cost.contractor_id === c.id).reduce((acc, cost) => acc + cost.amount_gross, 0),
       }))
       .filter((d) => d.value > 0)
@@ -69,7 +73,7 @@ export function TopContractorsChart() {
             cursor={{ fill: 'rgba(255,255,255,0.04)' }}
             content={
               <GlassTooltip<number, string>
-                valueFormatter={(value) => formatCurrency(value ?? 0)}
+                valueFormatter={(value) => formatEUR(value ?? 0)}
                 labelFormatter={(label) => sanitizeName(label)}
               />
             }

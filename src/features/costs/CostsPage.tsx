@@ -8,6 +8,7 @@ import { Input } from '../../components/ui/input';
 import { EmptyState } from '../../components/EmptyState';
 import { useData } from '../../store/useData';
 import type { Cost, CostInput, Subphase } from '../../types';
+import { formatEUR } from '../../lib/utils';
 
 type FileWithPath = File & { path?: string };
 
@@ -24,9 +25,6 @@ type CostDraft = {
 };
 
 const today = new Date().toISOString().slice(0, 10);
-
-const formatCurrency = (value: number) =>
-  Number(value || 0).toLocaleString('sl-SI', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2 });
 
 const deriveMonth = (date: string, existing?: string) => (existing && existing.length >= 4 ? existing : date.slice(0, 7));
 
@@ -378,7 +376,7 @@ export function CostsPage() {
                               cost.invoice_no || '—'
                             )}
                           </td>
-                          <td className="px-3 py-2 text-right font-semibold">{formatCurrency(cost.amount_gross)}</td>
+                          <td className="px-3 py-2 text-right font-semibold">{formatEUR(cost.amount_gross)}</td>
                           <td className="px-3 py-2">
                             {isEditing ? (
                               <label className="flex cursor-pointer items-center gap-2 text-xs font-semibold text-primary">

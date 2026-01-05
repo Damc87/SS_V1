@@ -6,7 +6,7 @@ import { CostsByPhaseChart } from './CostsByPhaseChart';
 import { TopContractorsChart } from './TopContractorsChart';
 import { CumulatedLineChart } from './CumulatedLineChart';
 import { useData } from '../../store/useData';
-import { cn } from '../../lib/utils';
+import { cn, formatEUR } from '../../lib/utils';
 import { GlassCard } from './GlassCard';
 
 export function Dashboard() {
@@ -62,26 +62,26 @@ export function Dashboard() {
   const kpis = [
     {
       label: 'Skupaj stroški',
-      value: `€ ${summary.total.toFixed(2)}`,
+      value: formatEUR(summary.total),
       hint: 'Kumulativno',
       accent: 'text-primary',
     },
     {
       label: 'Ta mesec',
-      value: `€ ${summary.thisMonth.toFixed(2)}`,
+      value: formatEUR(summary.thisMonth),
       hint: 'Mesečni odmik',
       accent: 'text-success',
     },
     {
       label: 'Največji izvajalec',
       value: summary.topContractor,
-      hint: `€ ${summary.topContractorValue.toFixed(2)}`,
+      hint: formatEUR(summary.topContractorValue),
       accent: 'text-warning',
     },
     {
       label: 'Najdražja faza',
       value: summary.expensivePhase,
-      hint: `€ ${summary.expensivePhaseValue.toFixed(2)}`,
+      hint: formatEUR(summary.expensivePhaseValue),
       accent: 'text-danger',
     },
   ];
