@@ -8,22 +8,23 @@ import { formatEUR } from '../../lib/utils';
 
 export function TopContractorsChart() {
   const { costs, contractors } = useData();
-  const sanitizeName = useCallback(
-    (value: unknown) => sanitizeLabel(String((value as { naziv?: string; name?: string })?.naziv ?? (value as { name?: string })?.name ?? value ?? '')),
-    []
-  );
+  const resolveContractorName = useCallback((value: unknown) => {
+    const izvajalecNaziv =
+      typeof value === 'string' ? value : (value as { naziv?: string; name?: string })?.naziv ?? (value as { name?: string })?.name ?? '';
+    return sanitizeLabel(izvajalecNaziv);
+  }, []);
 
   const data = useMemo(() => {
     const decorated = contractors
       .map((c) => ({
-        name: sanitizeName(c),
+        izvajalecNaziv: resolveContractorName(c),
         value: costs.filter((cost) => !cost.is_archived && cost.contractor_id === c.id).reduce((acc, cost) => acc + cost.amount_gross, 0),
       }))
       .filter((d) => d.value > 0)
       .sort((a, b) => b.value - a.value)
       .slice(0, 8);
     return decorated;
-  }, [contractors, costs, sanitizeName]);
+  }, [contractors, costs, resolveContractorName]);
   const hasData = data.length > 0;
 
   if (!hasData) {
@@ -37,7 +38,7 @@ export function TopContractorsChart() {
   }
 
   const AxisTick = (props: TickProps) => {
-    const label = sanitizeName(props.payload?.value);
+    const label = resolveContractorName(props.payload?.value);
     const truncated = label.length > 20 ? `${label.slice(0, 19)}…` : label;
     return (
       <Text {...props} className="select-none" style={{ ...tickLabel, fontSize: 13 }}>
@@ -53,7 +54,7 @@ export function TopContractorsChart() {
         <BarChart data={data} layout="vertical" margin={{ top: 6, bottom: 6, left: 0, right: 18 }} barCategoryGap={14}>
           <defs>
             {data.map((item, idx) => (
-              <linearGradient key={item.name} id={`contractor-${idx}-gradient`} x1="0" y1="0" x2="1" y2="0">
+              <linearGradient key={item.izvajalecNaziv} id={`contractor-${idx}-gradient`} x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0%" stopColor={withAlpha(neonPalette[idx % neonPalette.length], 0.9)} />
                 <stop offset="100%" stopColor={withAlpha(neonPalette[(idx + 2) % neonPalette.length], 0.4)} />
               </linearGradient>
@@ -62,7 +63,7 @@ export function TopContractorsChart() {
           <CartesianGrid {...gridStyle} strokeWidth={1} vertical={false} />
           <XAxis type="number" hide />
           <YAxis
-            dataKey="name"
+            dataKey="izvajalecNaziv"
             type="category"
             width={180}
             axisLine={false}
@@ -74,14 +75,14 @@ export function TopContractorsChart() {
             content={
               <GlassTooltip<number, string>
                 valueFormatter={(value) => formatEUR(value ?? 0)}
-                labelFormatter={(label) => sanitizeName(label)}
+                labelFormatter={(label) => resolveContractorName(label)}
               />
             }
           />
           <Bar dataKey="value" radius={[999, 999, 999, 999]} barSize={22} {...animation}>
             {data.map((item, idx) => (
               <Cell
-                key={item.name}
+                key={item.izvajalecNaziv}
                 fill={`url(#contractor-${idx}-gradient)`}
                 stroke={withAlpha(neonPalette[idx % neonPalette.length], 0.95)}
                 strokeWidth={1.25}
