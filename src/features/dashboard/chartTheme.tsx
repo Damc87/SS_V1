@@ -12,16 +12,27 @@ const neonPalette = ['#8BE9FD', '#A78BFA', '#7CF5D2', '#7EA0FF', '#FFB86C', '#F4
 
 const hashString = (value: string) => value.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
-const toLabel = (v: unknown) => {
+const toLabel = (v: unknown): string => {
   if (v == null) return '';
-  if (typeof v === 'string' || typeof v === 'number') return String(v);
-  return String(
-    (v as { naziv?: string; name?: string; label?: string; title?: string }).naziv ??
-      (v as { name?: string }).name ??
-      (v as { label?: string }).label ??
-      (v as { title?: string }).title ??
-      ''
-  );
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
+
+  if (typeof v === 'object') {
+    const candidate =
+      (v as { naziv?: unknown }).naziv ??
+      (v as { ime?: unknown }).ime ??
+      (v as { name?: unknown }).name ??
+      (v as { label?: unknown }).label ??
+      (v as { title?: unknown }).title ??
+      '';
+
+    if (typeof candidate === 'object') {
+      return toLabel(candidate);
+    }
+
+    return String(candidate ?? '');
+  }
+
+  return String(v);
 };
 
 const safeText = (s: unknown) => String(s ?? '');
