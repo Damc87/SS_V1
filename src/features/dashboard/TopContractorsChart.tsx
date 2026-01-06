@@ -10,14 +10,15 @@ export function TopContractorsChart() {
   const { costs, contractors } = useData();
 
   const chartData = useMemo(() => {
-    const raw = contractors.map((contractor) => ({
-      izvajalec: contractor,
+    const items = contractors.map((contractor) => ({
+      naziv: contractor.naziv ?? contractor.name ?? contractor.ime ?? '',
       bruto: costs.filter((cost) => !cost.is_archived && cost.contractor_id === contractor.id).reduce((acc, cost) => acc + cost.amount_gross, 0),
     }));
-    return raw
-      .map((r) => ({
-        izvajalecNaziv: toLabel(r.izvajalec).trim(),
-        bruto: Number(r.bruto ?? (r as { znesek?: number }).znesek ?? 0),
+
+    return items
+      .map((item) => ({
+        label: toLabel(item.naziv || item.ime || item.name || '').trim(),
+        bruto: Number(item.bruto ?? item.znesek ?? item.value ?? 0),
       }))
       .filter((d) => d.bruto > 0)
       .sort((a, b) => b.bruto - a.bruto)
@@ -40,7 +41,7 @@ export function TopContractorsChart() {
     const truncated = label.length > 20 ? `${label.slice(0, 19)}…` : label;
     return (
       <Text {...props} className="select-none" style={{ ...tickLabel, fontSize: 13 }}>
-        <title>{label}</title>
+        <title>{String(label)}</title>
         {truncated}
       </Text>
     );
@@ -52,7 +53,7 @@ export function TopContractorsChart() {
         <BarChart data={chartData} layout="vertical" margin={{ top: 6, bottom: 6, left: 0, right: 18 }} barCategoryGap={14}>
           <defs>
             {chartData.map((item, idx) => (
-              <linearGradient key={item.izvajalecNaziv} id={`contractor-${idx}-gradient`} x1="0" y1="0" x2="1" y2="0">
+              <linearGradient key={item.label} id={`contractor-${idx}-gradient`} x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0%" stopColor={withAlpha(neonPalette[idx % neonPalette.length], 0.9)} />
                 <stop offset="100%" stopColor={withAlpha(neonPalette[(idx + 2) % neonPalette.length], 0.4)} />
               </linearGradient>
@@ -61,7 +62,7 @@ export function TopContractorsChart() {
           <CartesianGrid {...gridStyle} strokeWidth={1} vertical={false} />
           <XAxis type="number" hide />
           <YAxis
-            dataKey="izvajalecNaziv"
+            dataKey="label"
             type="category"
             width={180}
             axisLine={false}
@@ -73,14 +74,14 @@ export function TopContractorsChart() {
             content={
               <GlassTooltip<number, string>
                 valueFormatter={(value) => formatEUR(value ?? 0)}
-                labelFormatter={(label, item) => toLabel(item?.payload?.izvajalecNaziv ?? label).trim()}
+                labelFormatter={(label, item) => toLabel(item?.payload?.label ?? label).trim()}
               />
             }
           />
           <Bar dataKey="bruto" radius={[999, 999, 999, 999]} barSize={22} {...animation}>
             {chartData.map((item, idx) => (
               <Cell
-                key={item.izvajalecNaziv}
+                key={item.label}
                 fill={`url(#contractor-${idx}-gradient)`}
                 stroke={withAlpha(neonPalette[idx % neonPalette.length], 0.95)}
                 strokeWidth={1.25}

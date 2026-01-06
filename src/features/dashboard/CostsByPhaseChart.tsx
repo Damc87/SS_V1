@@ -22,26 +22,25 @@ export function CostsByPhaseChart() {
 
   const data = useMemo(() => {
     const activeCosts = costs.filter((c) => !c.is_archived);
-    const values = [...phases]
+    const items = [...phases]
       .sort((a, b) => a.order_no - b.order_no)
       .map((p) => ({
-        faza: p,
-        znesek: activeCosts
+        fazaId: p.id,
+        naziv: p.name ?? p.naziv ?? p.ime ?? '',
+        bruto: activeCosts
           .filter((c) => {
             const mainPhaseId = (c.subphase_id && subphaseToMain.get(c.subphase_id)) || c.phase_id;
             return mainPhaseId === p.id;
           })
           .reduce((acc, c) => acc + c.amount_gross, 0),
-        fazaId: p.id,
         color: getPhaseColor(p.id),
       }));
-    const phaseData = values.map((entry) => ({
+    return items.map((entry) => ({
       fazaId: entry.fazaId,
-      fazaNaziv: toLabel(entry.faza).trim(),
-      znesek: Number(entry.znesek ?? (entry as { bruto?: number }).bruto ?? 0),
+      fazaNaziv: toLabel(entry.naziv || entry.ime || entry.name || '').trim(),
+      znesek: Number(entry.bruto ?? entry.znesek ?? entry.value ?? 0),
       color: entry.color,
     }));
-    return phaseData;
   }, [costs, phases, subphaseToMain]);
   if (!data.length) {
     return (
@@ -67,7 +66,7 @@ export function CostsByPhaseChart() {
         className="select-none"
         style={tickLabel}
       >
-        <title>{label}</title>
+        <title>{String(label)}</title>
         {truncateLabel(label)}
       </Text>
     );
